@@ -119,36 +119,57 @@ export default function RegisterPage() {
   }
 
   const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
-    setSuccessMessage("")
+  e.preventDefault();
+  setError("");
+  setSuccessMessage("");
 
-    if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match.")
-      return
-    }
+  if (formData.password !== formData.confirmPassword) {
+    setError("Passwords do not match.");
+    return;
+  }
 
-    const passwordError = validatePassword(formData.password)
-    if (passwordError) {
-      setError(passwordError)
-      return
-    }
+  const passwordError = validatePassword(formData.password);
+  if (passwordError) {
+    setError(passwordError);
+    return;
+  }
 
-    if (!formData.agreeToTerms) {
-      setError("You must agree to the Terms of Service and Privacy Policy.")
-      return
-    }
+  if (!formData.agreeToTerms) {
+    setError("You must agree to the Terms of Service and Privacy Policy.");
+    return;
+  }
 
-    const result = await register(formData)
+  try {
+    const response = await fetch("/api/profiles", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: formData.email,
+        password: formData.password,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        accountType: formData.accountType, // Maps to role
+      }),
+    });
 
-    if (result.success) {
+    const data = await response.json();
+
+    if (data.success) {
       setSuccessMessage(
         `Account created successfully! Welcome, ${formData.firstName}. Redirecting to your dashboard...`,
-      )
+      );
+      setTimeout(() => {
+        router.push("/dashboard"); // Adjust based on role if needed
+      }, 2000);
     } else {
-      setError(result.error || "Registration failed. Please try again.")
+      setError(data.error || "Registration failed. Please try again.");
     }
+  } catch (error) {
+    setError("An error occurred during registration. Please try again.");
   }
+};
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900">
