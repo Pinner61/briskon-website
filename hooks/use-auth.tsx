@@ -2,6 +2,7 @@
 
 import { useState, useEffect, createContext, useContext, ReactNode } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { useRouter } from "next/navigation"; // Import useRouter
 
 interface User {
   id: string;
@@ -18,7 +19,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   register: (userData: { email: string; password: string; firstName: string; lastName: string; accountType: "buyer" | "seller" | "both" }) => Promise<{ success: boolean; error?: string }>;
-  logout: () => void;
+  logout: () => Promise<void>;
   isAuthenticated: boolean;
 }
 
@@ -35,6 +36,7 @@ export function useAuth() {
 export function useAuthState() {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter(); // Initialize useRouter
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -203,9 +205,18 @@ export function useAuthState() {
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    setIsLoading(false); // Ensure loading state is reset
+  const logout = async () => {
+    setIsLoading(true);
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+      router.push("/"); // Navigate to root path after logout
+      console.log("User logged out successfully and redirected to /");
+    } catch (error: any) {
+      console.error("Error during logout:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return { user, isLoading, login, register, logout, isAuthenticated: !!user };
