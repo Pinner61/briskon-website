@@ -56,7 +56,7 @@ interface Auction {
   buyNowPrice?: number;
   participants?: string[]; // Array of user IDs (UUIDs), parsed from jsonb
   bidcount?: number;
-  createdby?: { name?: string; avatar?: string; rating?: number; disabledProjects?: number };
+  createdby?: string; // Email of the user who created the auction
   timeLeft?: string;
   bidhistory?: { bidder: string; amount: number; time: string }[];
   questions?: { user: string; question: string; answer?: string; time: string }[];
@@ -106,6 +106,11 @@ export default function AuctionDetailPage() {
       return;
     }
 
+    if (user.email === auction?.createdby) {
+      alert("You cannot place a bid on your own auction.");
+      return;
+    }
+
     const amount = Number(bidAmount);
     if (isNaN(amount)) {
       alert("Please enter a valid bid amount.");
@@ -152,7 +157,6 @@ export default function AuctionDetailPage() {
       const auctionJson = await auctionRes.json();
       if (!auctionJson.success) throw new Error(auctionJson.error || "Failed to update auction");
 
-      // Recalculate timeLeft client-side if not provided by API
       const start = new Date(auctionJson.data.scheduledstart || "");
       const duration = auctionJson.data.auctionduration
         ? ((d) => ((d.days || 0) * 24 * 60 * 60) + ((d.hours || 0) * 60 * 60) + ((d.minutes || 0) * 60))(auctionJson.data.auctionduration)
@@ -200,8 +204,8 @@ export default function AuctionDetailPage() {
   if (error) return <div className="text-center py-20 text-red-600">{error}</div>;
   if (!auction) return <div className="text-center py-20">Auction not found</div>;
 
-  const isButtonDisabled = !bidAmount || isNaN(Number(bidAmount)) || Number(bidAmount) < getMinimumBid();
-  console.log("Button disabled:", isButtonDisabled, { bidAmount, minimumBid: getMinimumBid() });
+  const isButtonDisabled = !bidAmount || isNaN(Number(bidAmount)) || Number(bidAmount) < getMinimumBid() || (user?.email === auction?.createdby);
+  console.log("Button disabled:", isButtonDisabled, { bidAmount, minimumBid: getMinimumBid(), isCreator: user?.email === auction?.createdby });
 
   return (
     <div className="min-h-screen py-20">
@@ -404,7 +408,7 @@ export default function AuctionDetailPage() {
                     className="w-full transition-smooth hover-lift transform-3d"
                     onClick={handlePlaceBid}
                     disabled={isButtonDisabled}
-                    style={{ display: "block", width: "100%", padding: "0.5rem" }} // Ensure full width and padding
+                    style={{ display: "block", width: "100%", padding: "0.5rem" }}
                   >
                     Place Bid
                   </Button>
@@ -438,17 +442,17 @@ export default function AuctionDetailPage() {
               <CardContent>
                 <div className="flex items-center gap-3 mb-4">
                   <Image
-                    src={auction.createdby?.avatar || "/placeholder.svg"}
-                    alt={auction.createdby?.name || "Seller"}
+                    src="/placeholder.svg" // Placeholder since no avatar is provided
+                    alt={auction.createdby || "Seller"}
                     width={60}
                     height={60}
                     className="rounded-full"
                   />
                   <div>
-                    <h4 className="font-semibold">{auction.createdby?.name || "Unknown Seller"}</h4>
+                    <h4 className="font-semibold">{auction.createdby || "Unknown Seller"}</h4>
                     <div className="flex items-center gap-1">
                       <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                      <span className="text-sm">{auction.createdby?.rating || 0}</span>
+                      <span className="text-sm">0</span> {/* No rating data, default to 0 */}
                     </div>
                   </div>
                 </div>
@@ -456,7 +460,7 @@ export default function AuctionDetailPage() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span>Completed Projects</span>
-                    <span className="font-medium">{auction.createdby?.disabledProjects || 0}</span>
+                    <span className="font-medium">0</span> {/* No disabledProjects data, default to 0 */}
                   </div>
                   <div className="flex justify-between">
                     <span>Watchers</span>
