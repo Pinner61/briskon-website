@@ -1,39 +1,35 @@
-// This file was already provided in the previous response and is assumed to be correct.
-// For brevity, it's not repeated here. If issues persist, we can revisit this.
-// Key functionality: Displays buyer-specific dashboard content.
-"use client"
+// dashboard/buyer/page.tsx
+"use client";
 
-import { Badge } from "@/components/ui/badge"
-
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { ShoppingBag, Gavel, TrendingUp, Heart, History, Settings, Bell } from "lucide-react"
-import Link from "next/link"
-import { useEffect, useState } from "react"
-
-interface User {
-  name: string
-  email: string
-  role: string
-}
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { ShoppingBag, Gavel, TrendingUp, Heart, History, Settings, Bell } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useAuth } from "@/hooks/use-auth"; // Adjust path based on your project structure
 
 export default function BuyerDashboard() {
-  const [user, setUser] = useState<User | null>(null)
+  const { user, isLoading } = useAuth();
 
-  useEffect(() => {
-    const storedUser = sessionStorage.getItem("currentUser")
-    if (storedUser) {
-      setUser(JSON.parse(storedUser))
-    }
-  }, [])
+  // No need for local useState or sessionStorage since useAuth handles the user state
+  // useEffect can be removed unless you need side effects based on user
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p>Loading user data...</p>
+      </div>
+    );
+  }
 
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p>Loading user data or not logged in...</p>
-        {/* Optionally, redirect to login if no user after a timeout */}
+        <p>Not logged in. Please log in to access the buyer dashboard.</p>
+        {/* Optionally, redirect to login page */}
       </div>
-    )
+    );
   }
 
   if (user.role !== "buyer" && user.role !== "both") {
@@ -41,7 +37,7 @@ export default function BuyerDashboard() {
       <div className="min-h-screen flex items-center justify-center">
         <p>Access Denied. This dashboard is for buyers.</p>
       </div>
-    )
+    );
   }
 
   return (
@@ -51,7 +47,7 @@ export default function BuyerDashboard() {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
               <h1 className="text-3xl md:text-4xl font-bold text-gray-800 dark:text-white">
-                Welcome, {user.name || "Buyer"}!
+                Welcome, {user.fname || user.lname || "Buyer"}!
               </h1>
               <p className="text-gray-600 dark:text-gray-300">This is your Buyer Dashboard.</p>
             </div>
@@ -155,8 +151,7 @@ export default function BuyerDashboard() {
             </CardContent>
           </Card>
         </div>
-        {/* The more detailed content from your previous version can be re-integrated here */}
       </div>
     </div>
-  )
+  );
 }
