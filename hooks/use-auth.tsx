@@ -9,7 +9,7 @@ interface User {
   email: string;
   fname: string;
   lname: string;
-  role: "buyer" | "seller" | "both";
+  role: "buyer" | "seller" | "both" | "admin";
   avatar?: string;
   verified: boolean;
   joinedDate: string;
