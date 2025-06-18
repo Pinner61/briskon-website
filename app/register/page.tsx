@@ -119,57 +119,74 @@ export default function RegisterPage() {
   }
 
   const handleRegister = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setError("");
-  setSuccessMessage("");
+    e.preventDefault()
+    setError("")
+    setSuccessMessage("")
 
-  if (formData.password !== formData.confirmPassword) {
-    setError("Passwords do not match.");
-    return;
-  }
-
-  const passwordError = validatePassword(formData.password);
-  if (passwordError) {
-    setError(passwordError);
-    return;
-  }
-
-  if (!formData.agreeToTerms) {
-    setError("You must agree to the Terms of Service and Privacy Policy.");
-    return;
-  }
-
-  try {
-    const response = await fetch("/api/profiles", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email: formData.email,
-        password: formData.password,
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        accountType: formData.accountType, // Maps to role
-      }),
-    });
-
-    const data = await response.json();
-
-    if (data.success) {
-      setSuccessMessage(
-        `Account created successfully! Welcome, ${formData.firstName}. Redirecting to your dashboard...`,
-      );
-      setTimeout(() => {
-        router.push("/dashboard"); // Adjust based on role if needed
-      }, 2000);
-    } else {
-      setError(data.error || "Registration failed. Please try again.");
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match.")
+      return
     }
-  } catch (error) {
-    setError("An error occurred during registration. Please try again.");
+
+    const passwordError = validatePassword(formData.password)
+    if (passwordError) {
+      setError(passwordError)
+      return
+    }
+
+    if (!formData.agreeToTerms) {
+      setError("You must agree to the Terms of Service and Privacy Policy.")
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const response = await fetch("/api/profiles", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          fname: formData.firstName, // Renamed from firstName
+          lname: formData.lastName, // Renamed from lastName
+          location: formData.location,
+          role: formData.accountType, // Maps to role
+          type: formData.companyType || (formData.accountType === "seller" || formData.accountType === "both" ? "individual" : undefined), // Default type if seller/both
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        setSuccessMessage(
+          `Account created successfully! Welcome, ${formData.firstName}. Redirecting to your dashboard...`,
+        )
+        setTimeout(() => {
+          switch (formData.accountType) {
+            case "buyer":
+              router.push("/auctions")
+              break
+            case "seller":
+              router.push("/dashboard/seller")
+              break
+            case "both":
+              router.push("/dashboard")
+              break
+            default:
+              router.push("/")
+          }
+        }, 2000)
+      } else {
+        setError(data.error || "Registration failed. Please try again.")
+      }
+    } catch (error) {
+      setError("An error occurred during registration. Please try again.")
+    } finally {
+      setIsLoading(false)
+    }
   }
-};
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900">
@@ -556,8 +573,8 @@ export default function RegisterPage() {
                   {authLoading || isLoading
                     ? "Creating Account..."
                     : successMessage
-                      ? "Account Created!"
-                      : "Create Account"}
+                    ? "Account Created!"
+                    : "Create Account"}
                 </Button>
                 <div className="text-center text-sm text-gray-300">
                   <p>
