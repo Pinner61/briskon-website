@@ -2,23 +2,34 @@
 
 import { useState, useEffect, createContext, useContext, ReactNode } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { useRouter } from "next/navigation"; // Import useRouter
+import { useRouter } from "next/navigation";
 
 interface User {
   id: string;
   email: string;
-  name: string;
+  fname: string;
+  lname: string;
   role: "buyer" | "seller" | "both";
   avatar?: string;
   verified: boolean;
   joinedDate: string;
+  location?: string;
+  type?: "individual" | "organization";
 }
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  register: (userData: { email: string; password: string; firstName: string; lastName: string; accountType: "buyer" | "seller" | "both" }) => Promise<{ success: boolean; error?: string }>;
+  register: (userData: {
+    email: string;
+    password: string;
+    fname: string;
+    lname: string;
+    location?: string;
+    role: "buyer" | "seller" | "both";
+    type?: "individual" | "organization";
+  }) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
 }
@@ -36,94 +47,83 @@ export function useAuth() {
 export function useAuthState() {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter(); // Initialize useRouter
+  const router = useRouter();
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
+useEffect(() => {
+  const checkAuth = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const { data: authUser } = await supabase.auth.getUser();
+        if (authUser.user && authUser.user.id && authUser.user.email) {
           const { data: profile, error: profileError } = await supabase
             .from("profiles")
             .select("*")
-            .eq("email", session.user.email)
+            .eq("email", authUser.user.email)
             .single();
-          if (profileError && profileError.code !== "PGRST116") throw profileError;
-          if (profile && profile.id && profile.email) {
-            setUser({
-              id: profile.id,
-              email: profile.email,
-              name: profile.name || "",
-              role: profile.role as "buyer" | "seller" | "both",
-              verified: !!profile.created_at,
-              joinedDate: profile.created_at || new Date().toISOString(),
-            });
-          } else {
-            const { data: authUser } = await supabase.auth.getUser();
-            if (authUser.user && authUser.user.id && authUser.user.email) {
-              const metaData = authUser.user.user_metadata || {};
-              const roleFromMeta = metaData.role || "buyer";
-              setUser({
-                id: authUser.user.id,
-                email: authUser.user.email,
-                name: metaData.name || "",
-                role: roleFromMeta === "auctioneer" ? "both" : (roleFromMeta as "buyer" | "seller" | "both"),
-                verified: !!authUser.user.confirmed_at,
-                joinedDate: authUser.user.created_at || new Date().toISOString(),
-              });
-            }
+          if (profileError && profileError.code !== "PGRST116" && !authUser.user.confirmed_at) {
+            throw new Error("Email not verified");
           }
+          setUser({
+            id: authUser.user.id,
+            email: authUser.user.email,
+            fname: profile?.fname || "",
+            lname: profile?.lname || "",
+            role: (profile?.role as "buyer" | "seller" | "both") || "buyer",
+            avatar: profile?.avatar,
+            verified: !!authUser.user.confirmed_at,
+            joinedDate: authUser.user.created_at || new Date().toISOString(),
+            location: profile?.location,
+            type: profile?.type as "individual" | "organization",
+          });
         }
-      } catch (error: any) {
-        console.error("Error checking auth:", error);
-      } finally {
-        setIsLoading(false);
       }
-    };
+    } catch (error: any) {
+      console.error("Error checking auth:", error);
+      await supabase.auth.signOut();
+      setUser(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    checkAuth();
+  checkAuth();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_IN" && session?.user) {
-        const fetchUser = async () => {
+  const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+    if (event === "SIGNED_IN" && session?.user) {
+      const fetchUser = async () => {
+        const { data: authUser } = await supabase.auth.getUser();
+        if (authUser.user && authUser.user.id && authUser.user.email && authUser.user.confirmed_at) {
           const { data: profile } = await supabase
             .from("profiles")
             .select("*")
-            .eq("email", session.user.email)
+            .eq("email", authUser.user.email)
             .single();
-          if (profile && profile.id && profile.email) {
-            setUser({
-              id: profile.id,
-              email: profile.email,
-              name: profile.name || "",
-              role: profile.role as "buyer" | "seller" | "both",
-              verified: !!profile.created_at,
-              joinedDate: profile.created_at || new Date().toISOString(),
-            });
-          } else {
-            const { data: authUser } = await supabase.auth.getUser();
-            if (authUser.user && authUser.user.id && authUser.user.email) {
-              const metaData = authUser.user.user_metadata || {};
-              const roleFromMeta = metaData.role || "buyer";
-              setUser({
-                id: authUser.user.id,
-                email: authUser.user.email,
-                name: metaData.name || "",
-                role: roleFromMeta === "auctioneer" ? "both" : (roleFromMeta as "buyer" | "seller" | "both"),
-                verified: !!authUser.user.confirmed_at,
-                joinedDate: authUser.user.created_at || new Date().toISOString(),
-              });
-            }
-          }
-        };
-        fetchUser();
-      } else if (event === "SIGNED_OUT") {
-        setUser(null);
-      }
-    });
+          setUser({
+            id: authUser.user.id,
+            email: authUser.user.email,
+            fname: profile?.fname || "",
+            lname: profile?.lname || "",
+            role: (profile?.role as "buyer" | "seller" | "both") || "buyer",
+            avatar: profile?.avatar,
+            verified: !!authUser.user.confirmed_at,
+            joinedDate: authUser.user.created_at || new Date().toISOString(),
+            location: profile?.location,
+            type: profile?.type as "individual" | "organization",
+          });
+        } else {
+          await supabase.auth.signOut();
+          setUser(null);
+        }
+      };
+      fetchUser();
+    } else if (event === "SIGNED_OUT") {
+      setUser(null);
+    }
+  });
 
-    return () => authListener.subscription.unsubscribe();
-  }, []);
+  return () => authListener.subscription.unsubscribe();
+}, []);
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
@@ -133,35 +133,30 @@ export function useAuthState() {
       if (error) throw error;
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
-        const { data: profile, error: profileError } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("email", email)
-          .single();
-        if (profileError && profileError.code !== "PGRST116") throw profileError;
-        if (profile && profile.id && profile.email) {
+        const { data: authUser } = await supabase.auth.getUser();
+        if (authUser.user && authUser.user.id && authUser.user.email && authUser.user.confirmed_at) {
+          const { data: profile, error: profileError } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("email", email)
+            .single();
+          if (profileError && profileError.code !== "PGRST116") throw profileError;
           setUser({
-            id: profile.id,
-            email: profile.email,
-            name: profile.name || "",
-            role: profile.role as "buyer" | "seller" | "both",
-            verified: !!profile.created_at,
-            joinedDate: profile.created_at || new Date().toISOString(),
+            id: authUser.user.id,
+            email: authUser.user.email,
+            fname: profile?.fname || "",
+            lname: profile?.lname || "",
+            role: (profile?.role as "buyer" | "seller" | "both") || "buyer",
+            avatar: profile?.avatar,
+            verified: !!authUser.user.confirmed_at,
+            joinedDate: authUser.user.created_at || new Date().toISOString(),
+            location: profile?.location,
+            type: profile?.type as "individual" | "organization",
           });
         } else {
-          const { data: authUser } = await supabase.auth.getUser();
-          if (authUser.user && authUser.user.id && authUser.user.email) {
-            const metaData = authUser.user.user_metadata || {};
-            const roleFromMeta = metaData.role || "buyer";
-            setUser({
-              id: authUser.user.id,
-              email: authUser.user.email,
-              name: metaData.name || "",
-              role: roleFromMeta === "auctioneer" ? "both" : (roleFromMeta as "buyer" | "seller" | "both"),
-              verified: !!authUser.user.confirmed_at,
-              joinedDate: authUser.user.created_at || new Date().toISOString(),
-            });
-          }
+          await supabase.auth.signOut(); // Log out if not confirmed
+          setUser(null);
+          return { success: false, error: "Please verify your email before logging in." };
         }
       }
       return { success: true };
@@ -172,7 +167,15 @@ export function useAuthState() {
     }
   };
 
-  const register = async (userData: { email: string; password: string; firstName: string; lastName: string; accountType: "buyer" | "seller" | "both" }) => {
+  const register = async (userData: {
+    email: string;
+    password: string;
+    fname: string;
+    lname: string;
+    location?: string;
+    role: "buyer" | "seller" | "both";
+    type?: "individual" | "organization";
+  }) => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -180,10 +183,14 @@ export function useAuthState() {
         password: userData.password,
         options: {
           data: {
-            name: `${userData.firstName} ${userData.lastName}`,
-            role: userData.accountType,
+            fname: userData.fname,
+            lname: userData.lname,
+            location: userData.location,
+            role: userData.role,
+            type: userData.type,
             verified: false,
           },
+          emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/verify`, // Redirect after verification
         },
       });
       if (error) throw error;
@@ -192,13 +199,18 @@ export function useAuthState() {
         const { error: profileError } = await supabase.from("profiles").insert({
           id: data.user.id,
           email: userData.email,
-          role: userData.accountType,
+          fname: userData.fname,
+          lname: userData.lname,
+          role: userData.role,
+          location: userData.location,
+          type: userData.type,
           created_at: new Date().toISOString(),
+          verified: false,
         });
         if (profileError) throw profileError;
       }
       setIsLoading(false);
-      return { success: true };
+      return { success: true, message: "Registration successful. Please check your email to verify your account." };
     } catch (error: any) {
       setIsLoading(false);
       return { success: false, error: error.message || "Registration failed. Please try again." };
@@ -222,4 +234,4 @@ export function useAuthState() {
   return { user, isLoading, login, register, logout, isAuthenticated: !!user };
 }
 
-export { AuthContext};
+export { AuthContext };
