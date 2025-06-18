@@ -1,53 +1,21 @@
-"use client"
+"use client";
 
-import { Badge } from "@/components/ui/badge"
-
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { User, ShoppingBag, Briefcase, Settings, Bell, LogOut } from "lucide-react"
-import Link from "next/link"
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-
-interface CurrentUser {
-  name: string
-  email: string
-  role: string
-}
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { User, ShoppingBag, Briefcase, Settings, Bell, LogOut } from "lucide-react";
+import Link from "next/link";
+import { useAuth } from "@/hooks/use-auth"; // Adjusted import, assuming CurrentUser is defined there or not needed
 
 export default function CombinedDashboardPage() {
-  const router = useRouter()
-  const [user, setUser] = useState<CurrentUser | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-
-  useEffect(() => {
-    const storedUser = sessionStorage.getItem("currentUser")
-    if (storedUser) {
-      const parsedUser = JSON.parse(storedUser)
-      setUser(parsedUser)
-      // If user has a specific role other than 'both' or 'admin' (who might see this), redirect them.
-      // This page is primarily for users with 'both' role or as a fallback.
-      if (parsedUser.role === "buyer" && router.pathname !== "/dashboard/buyer") {
-        // router.push('/dashboard/buyer'); // Commented out to allow viewing this page directly for now
-      } else if (parsedUser.role === "seller" && router.pathname !== "/dashboard/seller") {
-        // router.push('/dashboard/seller');
-      }
-    }
-    setIsLoading(false)
-  }, [router])
-
-  const handleLogout = () => {
-    sessionStorage.removeItem("currentUser")
-    sessionStorage.removeItem("registeredUser") // Clear any temp registration
-    router.push("/login")
-  }
+  const { user, isLoading, logout } = useAuth();
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p>Loading dashboard...</p>
       </div>
-    )
+    );
   }
 
   if (!user) {
@@ -58,11 +26,15 @@ export default function CombinedDashboardPage() {
           <Link href="/login">Go to Login</Link>
         </Button>
       </div>
-    )
+    );
   }
 
-  // This dashboard is intended for users with 'both' role, or as a generic landing if no specific role dashboard is hit.
-  // Admins might also land here if not redirected to /dashboard/admin specifically.
+  // Map User to a simplified display object (no need for separate CurrentUser if not defined)
+  const displayUser = {
+    name: user.fname || user.lname || "User", // Fallback to name if fname is missing
+    email: user.email,
+    role: user.role,
+  };
 
   return (
     <div className="min-h-screen py-12 md:py-20 bg-gray-100 dark:bg-gray-950">
@@ -71,9 +43,9 @@ export default function CombinedDashboardPage() {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
               <h1 className="text-3xl md:text-4xl font-bold text-gray-800 dark:text-white">
-                Welcome, {user.name || "User"}!
+                Welcome, {displayUser.name}!
               </h1>
-              <p className="text-gray-600 dark:text-gray-300">Your Briskon Auctions Hub (Role: {user.role})</p>
+              <p className="text-gray-600 dark:text-gray-300">Your Briskon Auctions Hub (Role: {displayUser.role})</p>
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" asChild>
@@ -86,7 +58,7 @@ export default function CombinedDashboardPage() {
                   <Settings className="h-4 w-4 mr-1.5" /> Account
                 </Link>
               </Button>
-              <Button variant="ghost" size="sm" onClick={handleLogout}>
+              <Button variant="ghost" size="sm" onClick={logout}>
                 <LogOut className="h-4 w-4 mr-1.5" /> Logout
               </Button>
             </div>
@@ -94,7 +66,7 @@ export default function CombinedDashboardPage() {
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {(user.role === "buyer" || user.role === "both") && (
+          {(displayUser.role === "buyer" || displayUser.role === "both") && (
             <Card className="hover:shadow-lg transition-shadow">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -110,7 +82,7 @@ export default function CombinedDashboardPage() {
             </Card>
           )}
 
-          {(user.role === "seller" || user.role === "both") && (
+          {(displayUser.role === "seller" || displayUser.role === "both") && (
             <Card className="hover:shadow-lg transition-shadow">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -125,7 +97,7 @@ export default function CombinedDashboardPage() {
               </CardContent>
             </Card>
           )}
-          {user.role === "admin" && (
+          {displayUser.role === "admin" && (
             <Card className="hover:shadow-lg transition-shadow md:col-span-2">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -142,7 +114,7 @@ export default function CombinedDashboardPage() {
           )}
         </div>
 
-        {user.role === "both" && (
+        {displayUser.role === "both" && (
           <Card>
             <CardHeader>
               <CardTitle>Overview for Buyer & Seller</CardTitle>
@@ -158,14 +130,14 @@ export default function CombinedDashboardPage() {
           </Card>
         )}
 
-        {user.role !== "buyer" && user.role !== "seller" && user.role !== "both" && user.role !== "admin" && (
+        {displayUser.role !== "buyer" && displayUser.role !== "seller" && displayUser.role !== "both" && displayUser.role !== "admin" && (
           <Card>
             <CardHeader>
               <CardTitle>Dashboard Information</CardTitle>
             </CardHeader>
             <CardContent>
               <p>
-                Your role is: <strong>{user.role}</strong>. Specific dashboard features for this role may be under
+                Your role is: <strong>{displayUser.role}</strong>. Specific dashboard features for this role may be under
                 development.
               </p>
               <p className="mt-4">
@@ -180,5 +152,5 @@ export default function CombinedDashboardPage() {
         )}
       </div>
     </div>
-  )
+  );
 }
