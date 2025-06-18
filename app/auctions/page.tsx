@@ -1,12 +1,12 @@
-"use client"
+"use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Clock,
   Users,
@@ -25,210 +25,40 @@ import {
   Eye,
   Heart,
   Share2,
-} from "lucide-react"
-import Image from "next/image"
-import Link from "next/link"
+} from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
 
-// // Define a more specific type for auction items
-// type AuctionItem = {
-//   id: number
-//   title: string
-//   category: string
-//   image: string
-//   auctionType: "forward" | "reverse"
-//   status: "live" | "upcoming" | "closed"
-//   location: string
-//   featured?: boolean
-//   verified?: boolean
-//   // Forward auction specific
-//   currentBid?: number
-//   timeLeft?: string
-//   bidders?: number
-//   seller?: string
-//   rating?: number
-//   // Reverse auction specific
-//   targetPrice?: number
-//   deadline?: string
-//   proposals?: number
-//   buyer?: string
-//   // Upcoming specific
-//   startingBid?: number
-//   startsIn?: string
-//   // Closed specific
-//   finalBid?: number
-//   endedAgo?: string
-//   winner?: string
-//   views?: number
-//   watchers?: number
-// }
-
-// const allAuctionItems: AuctionItem[] = [
-//   // Live Forward Auctions
-//   {
-//     id: 1,
-//     title: "Vintage Rolex Submariner - Collector's Edition",
-//     category: "Watches",
-//     currentBid: 12500,
-//     timeLeft: "2h 34m",
-//     bidders: 24,
-//     image: "/placeholder.svg?height=300&width=400",
-//     seller: "LuxuryTimepieces",
-//     rating: 4.9,
-//     auctionType: "forward",
-//     status: "live",
-//     location: "New York, USA",
-//     featured: true,
-//     verified: true,
-//     views: 1247,
-//     watchers: 89,
-//   },
-//   {
-//     id: 2,
-//     title: "Professional DSLR Camera Kit - Canon EOS R5 with Lenses",
-//     category: "Electronics",
-//     currentBid: 3750,
-//     timeLeft: "1h 18m",
-//     bidders: 18,
-//     image: "/placeholder.svg?height=300&width=400",
-//     seller: "PhotoPro Equipment",
-//     rating: 4.8,
-//     auctionType: "forward",
-//     status: "live",
-//     location: "London, UK",
-//     verified: true,
-//     views: 892,
-//     watchers: 45,
-//   },
-//   {
-//     id: 3,
-//     title: "Limited Edition Designer Handbag - Hermès Birkin",
-//     category: "Fashion",
-//     currentBid: 8900,
-//     timeLeft: "4h 52m",
-//     bidders: 31,
-//     image: "/placeholder.svg?height=300&width=400",
-//     seller: "LuxuryFashion",
-//     rating: 4.9,
-//     auctionType: "forward",
-//     status: "live",
-//     location: "Paris, France",
-//     featured: true,
-//     verified: true,
-//     views: 2156,
-//     watchers: 127,
-//   },
-//   // Live Reverse Auctions (Procurement)
-//   {
-//     id: 101,
-//     title: "Enterprise Software Development - Custom CRM System",
-//     category: "Services",
-//     targetPrice: 85000,
-//     deadline: "5d 12h",
-//     proposals: 12,
-//     image: "/placeholder.svg?height=300&width=400",
-//     buyer: "TechCorp Solutions",
-//     auctionType: "reverse",
-//     status: "live",
-//     location: "San Francisco, USA",
-//     verified: true,
-//     views: 456,
-//     watchers: 23,
-//   },
-//   {
-//     id: 102,
-//     title: "Bulk Office Furniture Procurement - 500 Ergonomic Chairs",
-//     category: "Office Supplies",
-//     targetPrice: 45000,
-//     deadline: "3d 8h",
-//     proposals: 8,
-//     image: "/placeholder.svg?height=300&width=400",
-//     buyer: "Corporate Workspace Inc.",
-//     auctionType: "reverse",
-//     status: "live",
-//     location: "Chicago, USA",
-//     views: 234,
-//     watchers: 15,
-//   },
-//   // Upcoming Forward Auctions
-//   {
-//     id: 4,
-//     title: "Rare Vintage Wine Collection - Bordeaux 1982",
-//     category: "Collectibles",
-//     startingBid: 2500,
-//     startsIn: "2h 15m",
-//     image: "/placeholder.svg?height=300&width=400",
-//     seller: "WineConnoisseur",
-//     auctionType: "forward",
-//     status: "upcoming",
-//     location: "Bordeaux, France",
-//     featured: true,
-//     verified: true,
-//     views: 678,
-//     watchers: 34,
-//   },
-//   {
-//     id: 5,
-//     title: "Classic Car Restoration Project - 1967 Mustang",
-//     category: "Automotive",
-//     startingBid: 15000,
-//     startsIn: "1d 4h",
-//     image: "/placeholder.svg?height=300&width=400",
-//     seller: "ClassicAutoDealer",
-//     auctionType: "forward",
-//     status: "upcoming",
-//     location: "Detroit, USA",
-//     verified: true,
-//     views: 1123,
-//     watchers: 67,
-//   },
-//   // Upcoming Reverse Auctions
-//   {
-//     id: 103,
-//     title: "Marketing Campaign Development - Digital Strategy",
-//     category: "Services",
-//     targetPrice: 25000,
-//     startsIn: "6h",
-//     image: "/placeholder.svg?height=300&width=400",
-//     buyer: "StartupVentures",
-//     auctionType: "reverse",
-//     status: "upcoming",
-//     location: "Austin, USA",
-//     views: 189,
-//     watchers: 12,
-//   },
-//   // Closed Auctions
-//   {
-//     id: 6,
-//     title: "Rare Comic Book Collection - Marvel First Editions",
-//     category: "Collectibles",
-//     finalBid: 4200,
-//     endedAgo: "2 days ago",
-//     bidders: 28,
-//     image: "/placeholder.svg?height=300&width=400",
-//     seller: "ComicVault",
-//     winner: "CollectorPrime",
-//     auctionType: "forward",
-//     status: "closed",
-//     location: "New York, USA",
-//     verified: true,
-//     views: 1567,
-//   },
-//   {
-//     id: 104,
-//     title: "IT Infrastructure Upgrade - Network Equipment",
-//     category: "Technology",
-//     finalBid: 67000,
-//     endedAgo: "1 week ago",
-//     proposals: 15,
-//     image: "/placeholder.svg?height=300&width=400",
-//     buyer: "Enterprise Solutions",
-//     winner: "TechSupplier Pro",
-//     auctionType: "reverse",
-//     status: "closed",
-//     location: "Seattle, USA",
-//     views: 345,
-//   },
-// ]
+type AuctionItem = {
+  id: string;
+  title: string;
+  category: string;
+  image: string; // First URL from productimages or placeholder
+  auctionType: "forward" | "reverse";
+  status: "live" | "upcoming" | "closed";
+  location: string;
+  featured?: boolean;
+  verified?: boolean;
+  currentBid?: number;
+  timeLeft?: string;
+  bidders?: number;
+  seller?: string;
+  rating?: number;
+  targetPrice?: number;
+  deadline?: string;
+  proposals?: number;
+  buyer?: string;
+  startingBid?: number;
+  startsIn?: string;
+  finalBid?: number;
+  endedAgo?: string;
+  winner?: string;
+  views?: number;
+  watchers?: number;
+  productimages?: string[]; // Array of Supabase Storage URLs
+  productdocuments?: string[]; // Array of Supabase Storage URLs
+  createdat?: string; // Added for sorting consistency
+};
 
 const categories = [
   { value: "all", label: "All Categories" },
@@ -240,7 +70,7 @@ const categories = [
   { value: "services", label: "Services" },
   { value: "office-supplies", label: "Office Supplies" },
   { value: "technology", label: "Technology" },
-]
+];
 
 const locations = [
   { value: "all", label: "All Locations" },
@@ -253,198 +83,194 @@ const locations = [
   { value: "Austin, USA", label: "Austin, USA" },
   { value: "Seattle, USA", label: "Seattle, USA" },
   { value: "Bordeaux, France", label: "Bordeaux, France" },
-]
+];
 
 const auctionTypes = [
   { value: "all", label: "All Types" },
   { value: "forward", label: "Forward Auctions" },
   { value: "reverse", label: "Reverse Auctions" },
-]
-
-
-type AuctionItem = {
-  id: string
-  title: string
-  category: string
-  image: string
-  auctionType: "forward" | "reverse"
-  status: "live" | "upcoming" | "closed"
-  location: string
-  featured?: boolean
-  verified?: boolean
-  currentBid?: number
-  timeLeft?: string
-  bidders?: number
-  seller?: string
-  rating?: number
-  targetPrice?: number
-  deadline?: string
-  proposals?: number
-  buyer?: string
-  startingBid?: number
-  startsIn?: string
-  finalBid?: number
-  endedAgo?: string
-  winner?: string
-  views?: number
-  watchers?: number
-}
-
+];
 
 function LiveTimer({ time }: { time: string }) {
-  const [timeLeft, setTimeLeft] = useState("")
+  const [timeLeft, setTimeLeft] = useState("");
 
   useEffect(() => {
     function update() {
-      const end = new Date(time)
-      const now = new Date()
-      const diff = Math.max(0, end.getTime() - now.getTime())
-      const hours = Math.floor(diff / (1000 * 60 * 60))
-      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-      const seconds = Math.floor((diff % (1000 * 60)) / 1000)
+      const end = new Date(time);
+      const now = new Date();
+      const diff = Math.max(0, end.getTime() - now.getTime());
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
       setTimeLeft(
         `${hours > 0 ? hours + "h " : ""}${minutes}m ${seconds}s`
-      )
+      );
     }
-    update()
-    const interval = setInterval(update, 1000)
-    return () => clearInterval(interval)
-  }, [time])
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, [time]);
 
   return (
     <span className="font-semibold text-green-600 flex items-center gap-1">
       <Clock className="h-3 w-3" />
       {timeLeft}
     </span>
-  )
+  );
 }
 
 export default function AuctionsPage() {
-  const [searchTerm, setSearchTerm] = useState("")
-  const [selectedCategory, setSelectedCategory] = useState("all")
-  const [selectedLocation, setSelectedLocation] = useState("all")
-  const [selectedAuctionType, setSelectedAuctionType] = useState("all")
-  const [sortBy, setSortBy] = useState("ending-soon")
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
-  const [showFilters, setShowFilters] = useState(false)
-  const [allAuctionItems, setAllAuctionItems] = useState<AuctionItem[]>([])
-
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedLocation, setSelectedLocation] = useState("all");
+  const [selectedAuctionType, setSelectedAuctionType] = useState("all");
+  const [sortBy, setSortBy] = useState("ending-soon");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [showFilters, setShowFilters] = useState(false);
+  const [allAuctionItems, setAllAuctionItems] = useState<AuctionItem[]>([]);
 
   useEffect(() => {
     const fetchAuctions = async () => {
-      const res = await fetch("/api/auctions")
-      const json = await res.json()
-      if (!json.success) return
+      try {
+        const res = await fetch("/api/auctions");
+        const json = await res.json();
+        if (!json.success) return;
 
-      const mapped: AuctionItem[] = (json.data || []).map((a: any) => {
-        // Calculate start and end times
-        const start = a.scheduledstart ? new Date(a.scheduledstart) : null
-        const duration = a.auctionduration
-          ? ((durationObj) => (
-            ((durationObj.days || 0) * 24 * 60 * 60) +
-            ((durationObj.hours || 0) * 60 * 60) +
-            ((durationObj.minutes || 0) * 60)
-          ))(a.auctionduration)
-          : 0
-        const end = start ? new Date(start.getTime() + duration * 1000) : null
-        const now = new Date()
+        const mapped: AuctionItem[] = (json.data || []).map((a: any) => {
+          // Calculate start and end times
+          const start = a.scheduledstart ? new Date(a.scheduledstart) : null;
+          const duration = a.auctionduration
+            ? ((durationObj) => (
+              ((durationObj.days || 0) * 24 * 60 * 60) +
+              ((durationObj.hours || 0) * 60 * 60) +
+              ((durationObj.minutes || 0) * 60)
+            ))(a.auctionduration)
+            : 0;
+          const end = start ? new Date(start.getTime() + duration * 1000) : null;
+          const now = new Date();
 
-        let status: "live" | "upcoming" | "closed" = "upcoming"
-        if (start && end) {
-          if (now < start) status = "upcoming"
-          else if (now >= start && now < end) status = "live"
-          else if (now >= end) status = "closed"
-        }
+          let status: "live" | "upcoming" | "closed" = "upcoming";
+          if (start && end) {
+            if (now < start) status = "upcoming";
+            else if (now >= start && now < end) status = "live";
+            else if (now >= end) status = "closed";
+          }
 
-        return {
-          id: a.id,
-          title: a.productname || a.title || "Untitled Auction",
-          category: a.categoryid || "",
-          image: Array.isArray(a.productimages) && a.productimages.length > 0
-            ? a.productimages[0]
-            : "/placeholder.svg",
-          auctionType: a.auctiontype,
-          status,
-          location: a.location || "",
-          scheduledStart: a.scheduledstart || "",
-          auctionDuration: a.auctionduration || "",
-          featured: a.featured || false,
-          verified: a.verified || false,
-          currentBid: a.currentbid ?? undefined,
-          timeLeft: end && status === "live" ? end.toISOString() : "", // We'll use this for the timer
-          bidders: a.bidcount ?? undefined,
-          seller: a.createdby || "",
-          rating: a.rating ?? undefined,
-          targetPrice: a.targetprice ?? undefined,
-          deadline: "", // You can calculate this if you have end time
-          proposals: a.proposals ?? undefined,
-          buyer: a.buyer || "",
-          startingBid: a.startprice ?? undefined,
-          startsIn: start && status === "upcoming" ? start.toISOString() : "",
-          finalBid: a.finalbid ?? undefined,
-          endedAgo: "", // You can calculate this if you have end time
-          winner: a.winner || "",
-          views: a.views ?? undefined,
-          watchers: a.watchers ?? undefined,
-        }
-      })
-      setAllAuctionItems(mapped)
-    }
-    fetchAuctions()
-  }, [])
+          return {
+            id: a.id,
+            title: a.productname || a.title || "Untitled Auction",
+            category: a.categoryid || "",
+            image: Array.isArray(a.productimages) && a.productimages.length > 0
+              ? a.productimages[0] // Use first URL from productimages
+              : "/placeholder.svg",
+            auctionType: a.auctiontype,
+            status,
+            location: a.location || "",
+            scheduledStart: a.scheduledstart || "",
+            auctionDuration: a.auctionduration || "",
+            featured: a.featured || false,
+            verified: a.verified || false,
+            currentBid: a.currentbid ?? undefined,
+            timeLeft: end && status === "live" ? end.toISOString() : "",
+            bidders: a.bidcount ?? undefined,
+            seller: a.createdby || "",
+            rating: a.rating ?? undefined,
+            targetPrice: a.targetprice ?? undefined,
+            deadline: "", // You can calculate this if you have end time
+            proposals: a.proposals ?? undefined,
+            buyer: a.buyer || "",
+            startingBid: a.startprice ?? undefined,
+            startsIn: start && status === "upcoming" ? start.toISOString() : "",
+            finalBid: a.finalbid ?? undefined,
+            endedAgo: "", // You can calculate this if you have end time
+            winner: a.winner || "",
+            views: a.views ?? undefined,
+            watchers: a.watchers ?? undefined,
+            productimages: a.productimages || [], // Array of Supabase Storage URLs
+            productdocuments: a.productdocuments || [], // Array of Supabase Storage URLs
+            createdat: a.createdat || "", // For sorting if needed
+          };
+        });
+        setAllAuctionItems(mapped);
+      } catch (error) {
+        console.error("Failed to fetch auctions:", error);
+      }
+    };
+    fetchAuctions();
+  }, []);
 
   const filterAndSortAuctions = (status: "live" | "upcoming" | "closed") => {
-    let items = allAuctionItems.filter((item) => item.status === status)
+    let items = allAuctionItems.filter((item) => item.status === status);
 
     if (searchTerm) {
-      items = items.filter((item) => item.title.toLowerCase().includes(searchTerm.toLowerCase()))
+      items = items.filter((item) =>
+        item.title.toLowerCase().includes(searchTerm.toLowerCase())
+      );
     }
     if (selectedCategory !== "all") {
-      items = items.filter((item) => item.category.toLowerCase().replace(/\s+/g, "-") === selectedCategory)
+      items = items.filter(
+        (item) => item.category.toLowerCase().replace(/\s+/g, "-") === selectedCategory
+      );
     }
     if (selectedLocation !== "all") {
-      items = items.filter((item) => item.location === selectedLocation)
+      items = items.filter((item) => item.location === selectedLocation);
     }
     if (selectedAuctionType !== "all") {
-      items = items.filter((item) => item.auctionType === selectedAuctionType)
+      items = items.filter((item) => item.auctionType === selectedAuctionType);
     }
 
     // Sorting logic
     if (status === "live") {
       if (sortBy === "ending-soon") {
-        items.sort((a, b) => (a.timeLeft && b.timeLeft ? a.timeLeft.localeCompare(b.timeLeft) : 0))
+        items.sort((a, b) =>
+          a.timeLeft && b.timeLeft ? a.timeLeft.localeCompare(b.timeLeft) : 0
+        );
       } else if (sortBy === "price-high") {
-        items.sort((a, b) => (b.currentBid || b.targetPrice || 0) - (a.currentBid || a.targetPrice || 0))
+        items.sort(
+          (a, b) =>
+            (b.currentBid || b.targetPrice || 0) - (a.currentBid || a.targetPrice || 0)
+        );
       } else if (sortBy === "price-low") {
-        items.sort((a, b) => (a.currentBid || a.targetPrice || 0) - (b.currentBid || b.targetPrice || 0))
+        items.sort(
+          (a, b) =>
+            (a.currentBid || a.targetPrice || 0) - (b.currentBid || b.targetPrice || 0)
+        );
       } else if (sortBy === "most-bids") {
-        items.sort((a, b) => (b.bidders || b.proposals || 0) - (a.bidders || a.proposals || 0))
+        items.sort(
+          (a, b) => (b.bidders || b.proposals || 0) - (a.bidders || a.proposals || 0)
+        );
       } else if (sortBy === "most-watched") {
-        items.sort((a, b) => (b.watchers || 0) - (a.watchers || 0))
+        items.sort((a, b) => (b.watchers || 0) - (a.watchers || 0));
+      } else if (sortBy === "newest") {
+        items.sort((a, b) =>
+          a.createdat && b.createdat ? b.createdat.localeCompare(a.createdat) : 0
+        );
       }
     }
 
-    return items
-  }
+    return items;
+  };
 
   const liveAuctions = useMemo(
     () => filterAndSortAuctions("live"),
-    [searchTerm, selectedCategory, selectedLocation, selectedAuctionType, sortBy, allAuctionItems],
-  )
+    [searchTerm, selectedCategory, selectedLocation, selectedAuctionType, sortBy, allAuctionItems]
+  );
   const upcomingAuctions = useMemo(
     () => filterAndSortAuctions("upcoming"),
-    [searchTerm, selectedCategory, selectedLocation, selectedAuctionType, sortBy, allAuctionItems],
-  )
+    [searchTerm, selectedCategory, selectedLocation, selectedAuctionType, sortBy, allAuctionItems]
+  );
   const closedAuctions = useMemo(
     () => filterAndSortAuctions("closed"),
-    [searchTerm, selectedCategory, selectedLocation, selectedAuctionType, sortBy, allAuctionItems],
-  )
+    [searchTerm, selectedCategory, selectedLocation, selectedAuctionType, sortBy, allAuctionItems]
+  );
 
   const AuctionCard = ({ auction }: { auction: AuctionItem }) => (
     <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 group relative border border-gray-200 bg-white dark:bg-gray-800">
       {auction.featured && (
         <div className="absolute top-2 left-2 z-10">
-          <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold">FEATURED</Badge>
+          <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold">
+            FEATURED
+          </Badge>
         </div>
       )}
 
@@ -456,7 +282,6 @@ export default function AuctionsPage() {
           height={300}
           className="w-full h-48 object-cover"
         />
-
         {/* Status Badge */}
         <div className="absolute top-2 right-2">
           {auction.status === "live" && (
@@ -481,7 +306,10 @@ export default function AuctionsPage() {
 
         {/* Auction Type Badge */}
         <div className="absolute bottom-2 left-2">
-          <Badge variant="secondary" className="flex items-center gap-1 bg-white/90 backdrop-blur-sm">
+          <Badge
+            variant="secondary"
+            className="flex items-center gap-1 bg-white/90 backdrop-blur-sm"
+          >
             {auction.auctionType === "forward" ? (
               <TrendingUp className="h-3 w-3 text-green-500" />
             ) : (
@@ -493,10 +321,18 @@ export default function AuctionsPage() {
 
         {/* Quick Actions */}
         <div className="absolute bottom-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <Button size="sm" variant="secondary" className="h-8 w-8 p-0 bg-white/90 backdrop-blur-sm">
+          <Button
+            size="sm"
+            variant="secondary"
+            className="h-8 w-8 p-0 bg-white/90 backdrop-blur-sm"
+          >
             <Heart className="h-3 w-3" />
           </Button>
-          <Button size="sm" variant="secondary" className="h-8 w-8 p-0 bg-white/90 backdrop-blur-sm">
+          <Button
+            size="sm"
+            variant="secondary"
+            className="h-8 w-8 p-0 bg-white/90 backdrop-blur-sm"
+          >
             <Share2 className="h-3 w-3" />
           </Button>
         </div>
@@ -556,7 +392,7 @@ export default function AuctionsPage() {
               {auction.status === "live" && auction.timeLeft && (
                 <div className="flex justify-between items-center">
                   <span className="text-xs text-gray-600">Time Left</span>
-                    <LiveTimer time={auction.timeLeft} />
+                  <LiveTimer time={auction.timeLeft} />
                 </div>
               )}
               {auction.status === "upcoming" && auction.startsIn && (
@@ -565,15 +401,16 @@ export default function AuctionsPage() {
                   <LiveTimer time={auction.startsIn} />
                 </div>
               )}
-              {(auction.status === "live" || auction.status === "closed") && auction.bidders !== undefined && (
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-gray-600">Bidders</span>
-                  <span className="font-semibold flex items-center gap-1">
-                    <Users className="h-3 w-3" />
-                    {auction.bidders}
-                  </span>
-                </div>
-              )}
+              {(auction.status === "live" || auction.status === "closed") &&
+                auction.bidders !== undefined && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-600">Bidders</span>
+                    <span className="font-semibold flex items-center gap-1">
+                      <Users className="h-3 w-3" />
+                      {auction.bidders}
+                    </span>
+                  </div>
+                )}
               {auction.watchers && (
                 <div className="flex justify-between items-center">
                   <span className="text-xs text-gray-600">Watching</span>
@@ -640,13 +477,13 @@ export default function AuctionsPage() {
             {auction.status === "closed"
               ? "View Details"
               : auction.auctionType === "forward"
-                ? "Place Bid"
-                : "Submit Proposal"}
+              ? "Place Bid"
+              : "Submit Proposal"}
           </Link>
         </Button>
       </CardContent>
     </Card>
-  )
+  );
 
   return (
     <div className="min-h-screen py-20 bg-gradient-to-br from-gray-50 to-gray-100">
@@ -793,6 +630,7 @@ export default function AuctionsPage() {
                     <SelectItem value="price-low">Price: Low to High</SelectItem>
                     <SelectItem value="most-bids">Most Bids</SelectItem>
                     <SelectItem value="most-watched">Most Watched</SelectItem>
+                    <SelectItem value="newest">Newest First</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -837,7 +675,11 @@ export default function AuctionsPage() {
           <TabsContent value="live" className="mt-8">
             {liveAuctions.length > 0 ? (
               <div
-                className={`grid gap-6 ${viewMode === "grid" ? "md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-1"}`}
+                className={`grid gap-6 ${
+                  viewMode === "grid"
+                    ? "md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                    : "grid-cols-1"
+                }`}
               >
                 {liveAuctions.map((auction) => (
                   <AuctionCard key={auction.id} auction={auction} />
@@ -848,7 +690,9 @@ export default function AuctionsPage() {
                 <div className="text-gray-400 mb-4">
                   <TrendingUp className="h-12 w-12 mx-auto" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-600 mb-2">No live auctions found</h3>
+                <h3 className="text-lg font-semibold text-gray-600 mb-2">
+                  No live auctions found
+                </h3>
                 <p className="text-gray-500">Try adjusting your filters or check back later.</p>
               </div>
             )}
@@ -857,7 +701,11 @@ export default function AuctionsPage() {
           <TabsContent value="upcoming" className="mt-8">
             {upcomingAuctions.length > 0 ? (
               <div
-                className={`grid gap-6 ${viewMode === "grid" ? "md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-1"}`}
+                className={`grid gap-6 ${
+                  viewMode === "grid"
+                    ? "md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                    : "grid-cols-1"
+                }`}
               >
                 {upcomingAuctions.map((auction) => (
                   <AuctionCard key={auction.id} auction={auction} />
@@ -868,7 +716,9 @@ export default function AuctionsPage() {
                 <div className="text-gray-400 mb-4">
                   <Calendar className="h-12 w-12 mx-auto" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-600 mb-2">No upcoming auctions found</h3>
+                <h3 className="text-lg font-semibold text-gray-600 mb-2">
+                  No upcoming auctions found
+                </h3>
                 <p className="text-gray-500">Try adjusting your filters or check back later.</p>
               </div>
             )}
@@ -877,7 +727,11 @@ export default function AuctionsPage() {
           <TabsContent value="closed" className="mt-8">
             {closedAuctions.length > 0 ? (
               <div
-                className={`grid gap-6 ${viewMode === "grid" ? "md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-1"}`}
+                className={`grid gap-6 ${
+                  viewMode === "grid"
+                    ? "md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                    : "grid-cols-1"
+                }`}
               >
                 {closedAuctions.map((auction) => (
                   <AuctionCard key={auction.id} auction={auction} />
@@ -888,7 +742,9 @@ export default function AuctionsPage() {
                 <div className="text-gray-400 mb-4">
                   <CheckCircle className="h-12 w-12 mx-auto" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-600 mb-2">No closed auctions found</h3>
+                <h3 className="text-lg font-semibold text-gray-600 mb-2">
+                  No closed auctions found
+                </h3>
                 <p className="text-gray-500">Try adjusting your filters or check back later.</p>
               </div>
             )}
@@ -902,10 +758,10 @@ export default function AuctionsPage() {
             size="lg"
             className="px-8 border-2 border-gray-300 text-gray-700 hover:bg-gray-100 hover:border-gray-400"
           >
-            Load More Auction
+            Load More Auctions
           </Button>
         </div>
       </div>
     </div>
-  )
+  );
 }
