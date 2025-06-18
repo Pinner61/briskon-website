@@ -155,13 +155,20 @@ export async function POST(request: Request) {
 }
 
 export async function GET() {
-  const { data, error } = await supabase
-    .from("auctions")
-    .select("*")
-    .order("createdat", { ascending: false });
+  try {
+    const { data, error } = await supabase
+      .from("auctions")
+      .select("*")
+      .order("createdat", { ascending: false });
 
-  if (error) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 400 });
+    if (error) {
+      return NextResponse.json({ success: false, error: error.message }, { status: 400 });
+    }
+    return NextResponse.json({ success: true, data });
+  } catch (error) {
+    return NextResponse.json(
+      { success: false, error: "Internal server error" },
+      { status: 500 }
+    );
   }
-  return NextResponse.json({ success: true, data });
 }
