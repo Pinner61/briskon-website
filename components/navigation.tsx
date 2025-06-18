@@ -190,6 +190,16 @@ function Navigation({ highlightSolutions = false }: { highlightSolutions?: boole
     }
   }
 
+  const onDashboard = () => {
+    if (user?.role === "both") {
+      window.location.href = "/dashboard";
+    } else if (user?.role === "seller") {
+      window.location.href = "/dashboard/seller";
+    } else if (user?.role === "buyer") {
+      window.location.href = "/dashboard/buyer";
+    }
+  };
+
   return (
     <header
       className={cn(
@@ -329,7 +339,7 @@ function Navigation({ highlightSolutions = false }: { highlightSolutions?: boole
               <>
                 <div className="hidden md:flex items-center space-x-2">
                   <span className="text-sm text-neutral-600 dark:text-neutral-300">
-                    Welcome, {user?.name?.split(" ")[0]}
+                    Welcome, {user?.fname?.split(" ")[0]}
                   </span>
                   <Button
                     variant="ghost"
@@ -373,6 +383,13 @@ function Navigation({ highlightSolutions = false }: { highlightSolutions?: boole
             >
               <Link href="/get-started">Get Started</Link>
             </Button>
+            <Button
+              variant="outline"
+              className="hidden md:inline-flex border-neutral-300 text-neutral-700 hover:bg-neutral-50 hover:border-brand-300 hover:text-brand-600 transition-all duration-200 dark:border-neutral-600 dark:text-neutral-200 dark:hover:bg-neutral-800 dark:hover:border-brand-400 dark:hover:text-brand-400"
+              onClick={onDashboard}
+            >
+              Dashboard
+            </Button>
 
             {/* Mobile menu */}
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -414,7 +431,7 @@ function Navigation({ highlightSolutions = false }: { highlightSolutions?: boole
                       {isAuthenticated && (
                         <div className="p-3 bg-neutral-100 dark:bg-neutral-800 rounded-lg">
                           <div className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
-                            Welcome back, {user?.name}
+                            Welcome back, {user?.fname}
                           </div>
                           <div className="text-xs text-neutral-600 dark:text-neutral-400">{user?.role} account</div>
                         </div>
@@ -522,6 +539,13 @@ function Navigation({ highlightSolutions = false }: { highlightSolutions?: boole
                       <Link href="/get-started" onClick={() => setIsOpen(false)}>
                         Get Started
                       </Link>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="w-full mt-2 border-neutral-300 text-neutral-700 hover:bg-neutral-50 hover:border-brand-300 hover:text-brand-600 transition-all duration-200 dark:border-neutral-600 dark:text-neutral-200 dark:hover:bg-neutral-800 dark:hover:border-brand-400 dark:hover:text-brand-400"
+                      onClick={onDashboard}
+                    >
+                      Dashboard
                     </Button>
                   </div>
                 </div>
