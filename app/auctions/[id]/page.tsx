@@ -1,12 +1,13 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Clock,
   Users,
@@ -18,124 +19,189 @@ import {
   CheckCircle,
   Star,
   MessageSquare,
-} from "lucide-react"
-import Image from "next/image"
-import { useAuth } from "@/hooks/use-auth"
-import { LoginPrompt } from "@/components/login-prompt"
+} from "lucide-react";
+import Image from "next/image";
+import { useAuth } from "@/hooks/use-auth";
+import { LoginPrompt } from "@/components/login-prompt";
 
-export default function AuctionDetailPage({ params }: { params: { id: string } }) {
-  const [bidAmount, setBidAmount] = useState("")
-  const [watchlisted, setWatchlisted] = useState(false)
+// Dummy calculateTimeLeft function (replace with actual implementation if needed)
+const calculateTimeLeft = (endDate: Date): string => {
+  const now = new Date();
+  const diff = endDate.getTime() - now.getTime();
+  if (diff <= 0) return "Auction ended";
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  return `${days}d ${hours}h ${minutes}m`;
+};
 
-  const { isAuthenticated, user } = useAuth()
-  const [showLoginPrompt, setShowLoginPrompt] = useState(false)
+// Define the Auction type based on the API response
+interface Auction {
+  id: string;
+  productname?: string;
+  title?: string;
+  categoryid?: string;
+  auctiontype: "forward" | "reverse";
+  currentbid?: number;
+  minimumincrement?: number;
+  startprice?: number;
+  scheduledstart?: string;
+  auctionduration?: { days?: number; hours?: number; minutes?: number };
+  bidders?: number;
+  watchers?: number;
+  productimages?: string[];
+  productdocuments?: string[];
+  productdescription?: string;
+  specifications?: string;
+  buyNowPrice?: number;
+  participants?: string[]; // Array of user IDs (UUIDs), parsed from jsonb
+  bidcount?: number;
+  createdby?: { name?: string; avatar?: string; rating?: number; disabledProjects?: number };
+  timeLeft?: string;
+  bidhistory?: { bidder: string; amount: number; time: string }[];
+  questions?: { user: string; question: string; answer?: string; time: string }[];
+}
 
-  // Mock auction data - in real app, fetch based on params.id
-  const auction = {
-    id: 1,
-    title: "E-commerce Platform with Payment Gateway Integration",
-    category: "Web Development",
-    type: "Forward Auction",
-    currentBid: 15000,
-    timeLeft: "2d 14h 32m",
-    bidders: 8,
-    watchers: 24,
-    images: [
-      "/placeholder.svg?height=400&width=600",
-      "/placeholder.svg?height=400&width=600",
-      "/placeholder.svg?height=400&width=600",
-    ],
-    description: `Complete e-commerce solution with modern design and full functionality. This project includes:
+export default function AuctionDetailPage() {
+  const params = useParams<{ id: string }>();
+  const auctionId = params.id;
 
-• Responsive web design optimized for all devices
-• Secure payment gateway integration (Stripe, PayPal)
-• Advanced product catalog with search and filtering
-• Inventory management system
-• Order tracking and management
-• Customer account management
-• Admin dashboard with analytics
-• SEO optimization
-• Security features and SSL implementation
+  const [bidAmount, setBidAmount] = useState("");
+  const [watchlisted, setWatchlisted] = useState(false);
+  const [auction, setAuction] = useState<Auction | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-The platform will be built using modern technologies including React, Node.js, and MongoDB for optimal performance and scalability.`,
-    startingBid: 10000,
-    buyNowPrice: 25000,
-    seller: {
-      name: "Briskon Technologies",
-      rating: 4.9,
-      completedProjects: 150,
-      avatar: "/placeholder.svg?height=60&width=60",
-    },
-    specifications: {
-      Timeline: "8-12 weeks",
-      "Technology Stack": "React, Node.js, MongoDB, Stripe API",
-      Deliverables: "Source code, documentation, 3 months support",
-      Revisions: "3 rounds of revisions included",
-      Hosting: "Deployment assistance included",
-    },
-    bidHistory: [
-      { bidder: "TechStartup123", amount: 15000, time: "2 hours ago" },
-      { bidder: "DigitalVentures", amount: 14500, time: "4 hours ago" },
-      { bidder: "InnovateNow", amount: 14000, time: "6 hours ago" },
-      { bidder: "WebSolutions", amount: 13500, time: "8 hours ago" },
-      { bidder: "StartupHub", amount: 13000, time: "12 hours ago" },
-    ],
-    questions: [
-      {
-        user: "TechStartup123",
-        question: "Can you integrate with our existing CRM system?",
-        answer: "Yes, we can integrate with most popular CRM systems including Salesforce, HubSpot, and custom APIs.",
-        time: "1 day ago",
-      },
-      {
-        user: "DigitalVentures",
-        question: "What's included in the 3 months support?",
-        answer:
-          "Support includes bug fixes, minor feature updates, and technical assistance. Major feature additions would be quoted separately.",
-        time: "2 days ago",
-      },
-    ],
-  }
+  const { isAuthenticated, user } = useAuth();
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
 
-  const handlePlaceBid = () => {
+  useEffect(() => {
+    const fetchAuctionDetails = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch(`/api/auctions/${auctionId}`);
+        const json = await res.json();
+        if (!json.success) throw new Error(json.error || "Failed to fetch auction");
+        const participants = Array.isArray(json.data.participants) ? json.data.participants : [];
+        const updatedAuction = { ...json.data, participants };
+        setAuction(updatedAuction);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "An error occurred");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAuctionDetails();
+  }, [auctionId]);
+
+  const handlePlaceBid = async () => {
     if (!isAuthenticated) {
-      setShowLoginPrompt(true)
-      return
+      setShowLoginPrompt(true);
+      alert("Please log in to place a bid.");
+      return;
     }
 
     if (!user?.role || (user.role !== "buyer" && user.role !== "both")) {
-      alert("Only buyers can place bids. Please update your account type.")
-      return
+      alert("Only buyers can place bids. Please update your account type.");
+      return;
     }
 
-    // Handle bid placement logic
-    console.log("Placing bid:", bidAmount)
-    alert(`Bid of $${Number(bidAmount).toLocaleString()} placed successfully!`)
-  }
+    const amount = Number(bidAmount);
+    if (isNaN(amount)) {
+      alert("Please enter a valid bid amount.");
+      return;
+    }
+
+    const minimumBid = Math.max(
+      (auction?.currentbid || 0) + (auction?.minimumincrement || 100),
+      auction?.startprice || 0
+    );
+    if (amount < minimumBid) {
+      alert(`Bid must be at least $${minimumBid.toLocaleString()}`);
+      return;
+    }
+
+    try {
+      console.log("Placing bid:", { auctionId, userId: user.id, amount });
+      const bidRes = await fetch("/api/bids", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          auction_id: auctionId,
+          user_id: user.id,
+          amount,
+          created_at: new Date().toISOString(),
+        }),
+      });
+      const bidJson = await bidRes.json();
+      if (!bidJson.success) throw new Error(bidJson.error || "Failed to record bid");
+
+      const isFirstBid = !(auction?.participants || []).includes(user.id);
+      const updatedParticipants = isFirstBid
+        ? [...(auction?.participants || []), user.id]
+        : auction?.participants || [];
+      const auctionRes = await fetch(`/api/auctions/${auctionId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentbid: amount,
+          participants: updatedParticipants,
+          bidcount: isFirstBid ? (auction?.bidcount || 0) + 1 : auction?.bidcount,
+        }),
+      });
+      const auctionJson = await auctionRes.json();
+      if (!auctionJson.success) throw new Error(auctionJson.error || "Failed to update auction");
+
+      // Recalculate timeLeft client-side if not provided by API
+      const start = new Date(auctionJson.data.scheduledstart || "");
+      const duration = auctionJson.data.auctionduration
+        ? ((d) => ((d.days || 0) * 24 * 60 * 60) + ((d.hours || 0) * 60 * 60) + ((d.minutes || 0) * 60))(auctionJson.data.auctionduration)
+        : 0;
+      const end = new Date(start.getTime() + duration * 1000);
+      const timeLeft = calculateTimeLeft(end);
+
+      setAuction({ ...auctionJson.data, timeLeft });
+      setBidAmount("");
+      alert(`Bid of $${amount.toLocaleString()} placed successfully!`);
+    } catch (err) {
+      console.error("Bid placement error:", err);
+      alert(err instanceof Error ? err.message : "An error occurred while placing bid");
+    }
+  };
 
   const handleBuyNow = () => {
     if (!isAuthenticated) {
-      setShowLoginPrompt(true)
-      return
+      setShowLoginPrompt(true);
+      return;
     }
 
     if (!user?.role || (user.role !== "buyer" && user.role !== "both")) {
-      alert("Only buyers can purchase items. Please update your account type.")
-      return
+      alert("Only buyers can purchase items. Please update your account type.");
+      return;
     }
 
-    // Handle buy now logic
-    console.log("Buy now clicked")
-    alert(`Item purchased for $${auction.buyNowPrice?.toLocaleString()}!`)
-  }
+    console.log("Buy now clicked");
+    alert(`Item purchased for $${auction?.buyNowPrice?.toLocaleString() || "N/A"}!`);
+  };
 
   const handleWatchlist = () => {
-    setWatchlisted(!watchlisted)
-  }
+    setWatchlisted(!watchlisted);
+    console.log("Watchlist toggled:", !watchlisted);
+  };
 
   const getMinimumBid = () => {
-    return auction.currentBid + 100 // Minimum increment of $100
-  }
+    return Math.max(
+      (auction?.currentbid || 0) + (auction?.minimumincrement || 100),
+      auction?.startprice || 0
+    );
+  };
+
+  if (loading) return <div className="text-center py-20">Loading...</div>;
+  if (error) return <div className="text-center py-20 text-red-600">{error}</div>;
+  if (!auction) return <div className="text-center py-20">Auction not found</div>;
+
+  const isButtonDisabled = !bidAmount || isNaN(Number(bidAmount)) || Number(bidAmount) < getMinimumBid();
+  console.log("Button disabled:", isButtonDisabled, { bidAmount, minimumBid: getMinimumBid() });
 
   return (
     <div className="min-h-screen py-20">
@@ -147,19 +213,19 @@ The platform will be built using modern technologies including React, Node.js, a
             <Card className="hover-lift transition-smooth">
               <CardContent className="p-0">
                 <Image
-                  src={auction.images[0] || "/placeholder.svg"}
-                  alt={auction.title}
+                  src={auction.productimages?.[0] || "/placeholder.svg"}
+                  alt={auction.productname || auction.title || "Auction Item"}
                   width={600}
                   height={400}
                   className="w-full h-96 object-cover rounded-t-lg transition-smooth hover:scale-105"
                 />
                 <div className="p-4">
                   <div className="flex gap-2">
-                    {auction.images.map((image, index) => (
+                    {auction.productimages?.map((image: string, index: number) => (
                       <Image
                         key={index}
                         src={image || "/placeholder.svg"}
-                        alt={`${auction.title} ${index + 1}`}
+                        alt={`${auction.productname || auction.title} ${index + 1}`}
                         width={100}
                         height={80}
                         className="w-20 h-16 object-cover rounded cursor-pointer border-2 border-transparent hover:border-blue-500 transition-smooth hover-lift"
@@ -176,13 +242,13 @@ The platform will be built using modern technologies including React, Node.js, a
                 <div className="flex items-start justify-between">
                   <div>
                     <div className="flex items-center gap-2 mb-2">
-                      <Badge variant="secondary">{auction.category}</Badge>
+                      <Badge variant="secondary">{auction.categoryid || "Uncategorized"}</Badge>
                       <Badge variant="outline" className="flex items-center gap-1">
                         <TrendingUp className="h-3 w-3" />
-                        {auction.type}
+                        {auction.auctiontype === "forward" ? "Forward Auction" : "Reverse Auction"}
                       </Badge>
                     </div>
-                    <CardTitle className="text-2xl">{auction.title}</CardTitle>
+                    <CardTitle className="text-2xl">{auction.productname || auction.title || "Untitled Auction"}</CardTitle>
                   </div>
                   <div className="flex gap-2">
                     <Button
@@ -210,56 +276,76 @@ The platform will be built using modern technologies including React, Node.js, a
 
                   <TabsContent value="description" className="mt-6">
                     <div className="prose dark:prose-invert max-w-none">
-                      <p className="whitespace-pre-line">{auction.description}</p>
+                      <p className="whitespace-pre-line">
+                        {auction.productdescription || "No description available"}
+                      </p>
                     </div>
                   </TabsContent>
 
                   <TabsContent value="specifications" className="mt-6">
                     <div className="space-y-4">
-                      {Object.entries(auction.specifications).map(([key, value]) => (
-                        <div key={key} className="flex justify-between py-2 border-b">
-                          <span className="font-medium">{key}</span>
-                          <span className="text-gray-600 dark:text-gray-300">{value}</span>
-                        </div>
-                      ))}
+                      {auction.specifications ? (
+                        Object.entries(JSON.parse(auction.specifications)).map(([key, value]) => (
+                          <div key={key} className="flex justify-between py-2 border-b">
+                            <span className="font-medium">{key}</span>
+                            <span className="text-gray-600 dark:text-gray-300">{value as string}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <p>No specifications available</p>
+                      )}
                     </div>
                   </TabsContent>
 
                   <TabsContent value="bids" className="mt-6">
                     <div className="space-y-3">
-                      {auction.bidHistory.map((bid, index) => (
-                        <div
-                          key={index}
-                          className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-800 rounded"
-                        >
-                          <div>
-                            <span className="font-medium">{bid.bidder}</span>
-                            <span className="text-sm text-gray-600 dark:text-gray-300 ml-2">{bid.time}</span>
+                      {auction.bidhistory?.length ? (
+                        auction.bidhistory.map((bid: { bidder: string; amount: number; time: string }, index: number) => (
+                          <div
+                            key={index}
+                            className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-800 rounded"
+                          >
+                            <div>
+                              <span className="font-medium">{bid.bidder}</span>
+                              <span className="text-sm text-gray-600 dark:text-gray-300 ml-2">
+                                {new Date(bid.time).toLocaleString("en-US", { hour12: true, hour: "2-digit", minute: "2-digit" })}
+                              </span>
+                            </div>
+                            <span className="font-semibold text-green-600">${bid.amount.toLocaleString()}</span>
                           </div>
-                          <span className="font-semibold text-green-600">${bid.amount.toLocaleString()}</span>
-                        </div>
-                      ))}
+                        ))
+                      ) : (
+                        <p>No bid history available</p>
+                      )}
                     </div>
                   </TabsContent>
 
                   <TabsContent value="qa" className="mt-6">
                     <div className="space-y-6">
-                      {auction.questions.map((qa, index) => (
-                        <div key={index} className="border-b pb-4">
-                          <div className="mb-2">
-                            <span className="font-medium">{qa.user}</span>
-                            <span className="text-sm text-gray-600 dark:text-gray-300 ml-2">{qa.time}</span>
+                      {auction.questions?.length ? (
+                        auction.questions.map((qa: { user: string; question: string; answer?: string; time: string }, index: number) => (
+                          <div key={index} className="border-b pb-4">
+                            <div className="mb-2">
+                              <span className="font-medium">{qa.user}</span>
+                              <span className="text-sm text-gray-600 dark:text-gray-300 ml-2">
+                                {new Date(qa.time).toLocaleString("en-US", { hour12: true, hour: "2-digit", minute: "2-digit" })}
+                              </span>
+                            </div>
+                            <div className="mb-2">
+                              <MessageSquare className="h-4 w-4 inline mr-2" />
+                              <span>{qa.question}</span>
+                            </div>
+                            {qa.answer && (
+                              <div className="ml-6 p-3 bg-blue-50 dark:bg-blue-900/20 rounded">
+                                <CheckCircle className="h-4 w-4 inline mr-2 text-green-600" />
+                                <span>{qa.answer}</span>
+                              </div>
+                            )}
                           </div>
-                          <div className="mb-2">
-                            <MessageSquare className="h-4 w-4 inline mr-2" />
-                            <span>{qa.question}</span>
-                          </div>
-                          <div className="ml-6 p-3 bg-blue-50 dark:bg-blue-900/20 rounded">
-                            <CheckCircle className="h-4 w-4 inline mr-2 text-green-600" />
-                            <span>{qa.answer}</span>
-                          </div>
-                        </div>
-                      ))}
+                        ))
+                      ) : (
+                        <p>No questions available</p>
+                      )}
 
                       <div className="mt-6">
                         <h4 className="font-semibold mb-3">Ask a Question</h4>
@@ -286,7 +372,7 @@ The platform will be built using modern technologies including React, Node.js, a
               <CardContent className="space-y-4">
                 <div className="text-center">
                   <div className="text-3xl font-bold text-green-600 mb-1 animate-pulse-glow">
-                    ${auction.currentBid.toLocaleString()}
+                    ${auction.currentbid?.toLocaleString() || "N/A"}
                   </div>
                   <div className="text-sm text-gray-600 dark:text-gray-300">Current Highest Bid</div>
                 </div>
@@ -294,11 +380,11 @@ The platform will be built using modern technologies including React, Node.js, a
                 <div className="flex items-center justify-center gap-4 text-sm">
                   <div className="flex items-center gap-1 hover-lift">
                     <Clock className="h-4 w-4 text-red-600 animate-bounce-gentle" />
-                    <span className="font-semibold text-red-600">{auction.timeLeft}</span>
+                    <span className="font-semibold text-red-600">{auction.timeLeft || "N/A"}</span>
                   </div>
                   <div className="flex items-center gap-1 hover-lift">
                     <Users className="h-4 w-4" />
-                    <span>{auction.bidders} bidders</span>
+                    <span>{auction.bidcount || 0} bidders</span>
                   </div>
                 </div>
 
@@ -317,7 +403,8 @@ The platform will be built using modern technologies including React, Node.js, a
                   <Button
                     className="w-full transition-smooth hover-lift transform-3d"
                     onClick={handlePlaceBid}
-                    disabled={!bidAmount || Number.parseInt(bidAmount) < getMinimumBid()}
+                    disabled={isButtonDisabled}
+                    style={{ display: "block", width: "100%", padding: "0.5rem" }} // Ensure full width and padding
                   >
                     Place Bid
                   </Button>
@@ -325,7 +412,11 @@ The platform will be built using modern technologies including React, Node.js, a
                   {auction.buyNowPrice && (
                     <>
                       <div className="text-center text-sm text-gray-600 dark:text-gray-300">or</div>
-                      <Button variant="outline" className="w-full transition-smooth hover-lift" onClick={handleBuyNow}>
+                      <Button
+                        variant="outline"
+                        className="w-full transition-smooth hover-lift"
+                        onClick={handleBuyNow}
+                      >
                         Buy Now - ${auction.buyNowPrice.toLocaleString()}
                       </Button>
                     </>
@@ -334,7 +425,7 @@ The platform will be built using modern technologies including React, Node.js, a
 
                 <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
                   <AlertCircle className="h-4 w-4" />
-                  <span>Minimum bid increment: $100</span>
+                  <span>Minimum bid increment: ${auction.minimumincrement || 100}</span>
                 </div>
               </CardContent>
             </Card>
@@ -347,17 +438,17 @@ The platform will be built using modern technologies including React, Node.js, a
               <CardContent>
                 <div className="flex items-center gap-3 mb-4">
                   <Image
-                    src={auction.seller.avatar || "/placeholder.svg"}
-                    alt={auction.seller.name}
+                    src={auction.createdby?.avatar || "/placeholder.svg"}
+                    alt={auction.createdby?.name || "Seller"}
                     width={60}
                     height={60}
                     className="rounded-full"
                   />
                   <div>
-                    <h4 className="font-semibold">{auction.seller.name}</h4>
+                    <h4 className="font-semibold">{auction.createdby?.name || "Unknown Seller"}</h4>
                     <div className="flex items-center gap-1">
                       <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                      <span className="text-sm">{auction.seller.rating}</span>
+                      <span className="text-sm">{auction.createdby?.rating || 0}</span>
                     </div>
                   </div>
                 </div>
@@ -365,11 +456,11 @@ The platform will be built using modern technologies including React, Node.js, a
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span>Completed Projects</span>
-                    <span className="font-medium">{auction.seller.completedProjects}</span>
+                    <span className="font-medium">{auction.createdby?.disabledProjects || 0}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Watchers</span>
-                    <span className="font-medium">{auction.watchers}</span>
+                    <span className="font-medium">{auction.watchers || 0}</span>
                   </div>
                 </div>
 
@@ -387,11 +478,11 @@ The platform will be built using modern technologies including React, Node.js, a
               <CardContent className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span>Starting Bid</span>
-                  <span className="font-medium">${auction.startingBid.toLocaleString()}</span>
+                  <span className="font-medium">${auction.startprice?.toLocaleString() || "N/A"}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Current Bid</span>
-                  <span className="font-medium text-green-600">${auction.currentBid.toLocaleString()}</span>
+                  <span className="font-medium text-green-600">${auction.currentbid?.toLocaleString() || "N/A"}</span>
                 </div>
                 {auction.buyNowPrice && (
                   <div className="flex justify-between">
@@ -401,11 +492,11 @@ The platform will be built using modern technologies including React, Node.js, a
                 )}
                 <div className="flex justify-between">
                   <span>Total Bids</span>
-                  <span className="font-medium">{auction.bidders}</span>
+                  <span className="font-medium">{auction.bidcount || 0}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Time Remaining</span>
-                  <span className="font-medium text-red-600">{auction.timeLeft}</span>
+                  <span className="font-medium text-red-600">{auction.timeLeft || "N/A"}</span>
                 </div>
               </CardContent>
             </Card>
@@ -419,10 +510,9 @@ The platform will be built using modern technologies including React, Node.js, a
         title="Sign in to place your bid"
         description="Join the auction and start bidding on this exclusive item"
         onSuccess={() => {
-          // Optionally refresh the page or update state
-          console.log("User logged in successfully")
+          console.log("User logged in successfully");
         }}
       />
     </div>
-  )
+  );
 }
