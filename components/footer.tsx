@@ -11,7 +11,7 @@ export function Footer() {
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 mb-8">
           <div className="lg:col-span-1">
             <Link href="/" className="inline-block mb-6">
-              <Image src="/images/briskon-auction-horizontal-logo-white.png" alt="Briskon Auction" width={180} height={50} className="h-auto" />
+              <Image src="/images/briskon-auction-vertical-logo-white.png" alt="Briskon Auction" width={150} height={40} className="h-auto" />
             </Link>
 
             <div className="space-y-3 text-sm text-gray-600">
@@ -55,6 +55,16 @@ export function Footer() {
                 <li>
                   <Link href="/newsroom" className="text-gray-600 hover:text-blue-600 transition-colors">
                     Newsroom
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/contact" className="text-gray-600 hover:text-blue-600 transition-colors">
+                    Contact Sales
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/demo" className="text-gray-600 hover:text-blue-600 transition-colors">
+                    Live Demo
                   </Link>
                 </li>
               </ul>
