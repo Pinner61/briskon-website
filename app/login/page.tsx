@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Gavel } from "lucide-react";
 
 export default function LoginPage() {
   const { login, isLoading, isAuthenticated, user } = useAuth();
@@ -121,7 +122,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 relative overflow-hidden px-4">
-      {/* Interactive Background */}
+      {/* Interactive Auction Atmosphere Background */}
       <div
         className="absolute inset-0 opacity-20 transition-all duration-300"
         style={{
@@ -130,17 +131,20 @@ export default function LoginPage() {
       />
       <div className="absolute inset-0 bg-grid-gray-200/[0.04] bg-[size:30px_30px]"></div>
 
-      {/* Floating Elements */}
+      {/* Auction-Related Floating Elements */}
       <FloatingOrb size="w-20 h-20" color="bg-blue-200/40" position="top-20 left-10" delay={0} />
       <FloatingOrb size="w-32 h-32" color="bg-cyan-200/40" position="top-40 right-20" delay={1000} />
       <Floating3DShape className="top-32 right-32 animate-rotate-slow" shape="cube" size={40} color="rgba(59, 130, 246, 0.15)" />
-      <Floating3DShape className="bottom-32 left-16 animate-float" shape="sphere" size={60} color="rgba(168, 85, 247, 0.15)" />
+      <Floating3DShape className="bottom-32 left-16 animate-float" shape="gavel" size={60} color="rgba(168, 85, 247, 0.15)" />
 
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-2xl">
         <Card className="bg-white/90 backdrop-blur-sm border border-gray-100 shadow-xl rounded-2xl overflow-hidden transform transition-all duration-300 hover:shadow-2xl card-hover">
           <CardHeader className="bg-gradient-to-br from-blue-50 via-white to-cyan-50 p-10 text-center relative">
             <div className="absolute inset-0 bg-grid-gray-200/[0.1] bg-[size:20px_20px]"></div>
             <div className="absolute -top-4 right-6 w-10 h-10 bg-blue-200/30 rounded-full animate-pulse"></div>
+            <div className="flex justify-center mb-4">
+              <Gavel className="h-12 w-12 text-blue-600" />
+            </div>
             <h1 className="text-2xl font-bold text-gray-900">Sign In to Briskon Auctions</h1>
             <p className="text-gray-600 text-lg">Access your account to start bidding on exclusive auctions</p>
           </CardHeader>
