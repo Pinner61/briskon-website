@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ArrowRight,
   Globe,
@@ -23,34 +23,34 @@ import {
   Lock,
   Cpu,
   Code,
-} from "lucide-react"
-import Image from "next/image"
-import Link from "next/link"
+} from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
 
 export default function HomePage() {
-  const [visibleStats, setVisibleStats] = useState(false)
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
-  const [activeTab, setActiveTab] = useState("overview")
-  const [highlightSolutions, setHighlightSolutions] = useState(false)
+  const [visibleStats, setVisibleStats] = useState(false);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [activeTab, setActiveTab] = useState("overview");
+  const [highlightSolutions, setHighlightSolutions] = useState(false);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      setMousePosition({ x: e.clientX, y: e.clientY })
-    }
+      setMousePosition({ x: e.clientX, y: e.clientY });
+    };
 
-    window.addEventListener("mousemove", handleMouseMove)
+    window.addEventListener("mousemove", handleMouseMove);
 
     return () => {
-      window.removeEventListener("mousemove", handleMouseMove)
-    }
-  }, [])
+      window.removeEventListener("mousemove", handleMouseMove);
+    };
+  }, []);
 
   const stats = [
     { icon: <Users className="h-6 w-6" />, number: "500+", label: "Enterprise Clients" },
     { icon: <BarChart3 className="h-6 w-6" />, number: "30%", label: "Avg. Revenue Increase" },
     { icon: <Clock className="h-6 w-6" />, number: "24/7", label: "Dedicated Support" },
     { icon: <Shield className="h-6 w-6" />, number: "99.99%", label: "Uptime Guarantee" },
-  ]
+  ];
 
   const platformFeatures = [
     {
@@ -83,7 +83,7 @@ export default function HomePage() {
       title: "Customizable Platform",
       description: "White-label options and API integrations.",
     },
-  ]
+  ];
 
   const platformBenefits = [
     {
@@ -106,7 +106,7 @@ export default function HomePage() {
       title: "Global Reach",
       description: "Expand your market and reach new customers worldwide.",
     },
-  ]
+  ];
 
   const useCases = [
     {
@@ -119,7 +119,7 @@ export default function HomePage() {
       title: "Strategic Procurement",
       description: "Drive down costs and improve supplier relationships with reverse auctions.",
     },
-  ]
+  ];
 
   const FloatingOrb = ({
     size,
@@ -131,7 +131,7 @@ export default function HomePage() {
       className={`absolute ${position} ${size} ${color} rounded-full blur-xl animate-pulse`}
       style={{ animationDelay: `${delay}ms` }}
     />
-  )
+  );
 
   const Floating3DShape = ({
     className,
@@ -143,16 +143,16 @@ export default function HomePage() {
       width: `${size}px`,
       height: `${size}px`,
       backgroundColor: color,
-    }
+    };
 
-    let shapeElement
+    let shapeElement;
     switch (shape) {
       case "cube":
-        shapeElement = <div className="cube" style={shapeStyle} />
-        break
+        shapeElement = <div className="cube" style={shapeStyle} />;
+        break;
       case "sphere":
-        shapeElement = <div className="sphere" style={shapeStyle} />
-        break
+        shapeElement = <div className="sphere" style={shapeStyle} />;
+        break;
       case "pyramid":
         shapeElement = (
           <div
@@ -166,18 +166,18 @@ export default function HomePage() {
               borderBottom: `${size}px solid ${color}`,
             }}
           />
-        )
-        break
+        );
+        break;
       default:
-        shapeElement = <div style={shapeStyle} />
+        shapeElement = <div style={shapeStyle} />;
     }
 
     return (
       <div className={`absolute ${className}`} style={{ transformStyle: "preserve-3d" }}>
         {shapeElement}
       </div>
-    )
-  }
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -489,16 +489,7 @@ export default function HomePage() {
               </p>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-12 items-center">
-              <div className="rounded-xl shadow-2xl border border-gray-200 overflow-hidden">
-                <Image
-                  src="/images/auction-types-holographic.png"
-                  alt="Briskon Auction Types"
-                  width={600}
-                  height={300}
-                  className="w-full h-auto object-cover"
-                />
-              </div>
+            <div className="grid md:grid-cols-[1fr_auto] gap-12 items-start">
               <div className="space-y-8">
                 <div className="space-y-4">
                   <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -563,16 +554,25 @@ export default function HomePage() {
                 <Button
                   className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white"
                   onClick={() => {
-                    setHighlightSolutions(true)
+                    setHighlightSolutions(true);
                     // Scroll to top to show navigation
-                    window.scrollTo({ top: 0, behavior: "smooth" })
+                    window.scrollTo({ top: 0, behavior: "smooth" });
                     // Remove highlight after 3 seconds
-                    setTimeout(() => setHighlightSolutions(false), 3000)
+                    setTimeout(() => setHighlightSolutions(false), 3000);
                   }}
                 >
                   Explore All Solutions
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
+              </div>
+              <div className="relative w-full h-[475px]">
+                <Image
+                  src="/images/auction-types-holographic.png"
+                  alt="Briskon Auction Types"
+                  width={600}
+                  height={600}
+                  className="w-full h-full object-contain rounded-xl shadow-2xl border border-gray-200"
+                />
               </div>
             </div>
           </div>
@@ -782,5 +782,5 @@ export default function HomePage() {
         </div>
       </section>
     </div>
-  )
+  );
 }
