@@ -1,14 +1,14 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Checkbox } from "@/components/ui/checkbox"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import type React from "react";
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Eye,
   EyeOff,
@@ -22,124 +22,142 @@ import {
   ShoppingBag,
   Shield,
   UserPlus,
-} from "lucide-react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { useSearchParams } from "next/navigation"
-import { useAuth } from "@/hooks/use-auth"
+} from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useSearchParams } from "next/navigation";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function RegisterPage() {
-  const { register, isLoading: authLoading, isAuthenticated, user } = useAuth()
-  const router = useRouter()
-  const searchParams = useSearchParams()
+  const { register, isLoading: authLoading, isAuthenticated, user } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState("")
-  const [successMessage, setSuccessMessage] = useState("")
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
   const [formData, setFormData] = useState({
     accountType: "buyer", // Default to 'buyer'
+    sellerType: "individual", // Default to 'individual' for seller/both
     firstName: "",
     lastName: "",
     email: "",
     phone: "",
     password: "",
     confirmPassword: "",
-    companyName: "",
-    companyType: "",
+    organizationName: "", // New field for organization
+    organizationContact: "", // New field for organization contact
     location: "",
     agreeToTerms: false,
     subscribeNewsletter: false,
-  })
+  });
 
   useEffect(() => {
-    const typeParam = searchParams.get("type")
+    const typeParam = searchParams.get("type");
     if (typeParam && ["buyer", "seller", "both"].includes(typeParam)) {
-      setFormData((prev) => ({ ...prev, accountType: typeParam }))
+      setFormData((prev) => ({ ...prev, accountType: typeParam }));
     }
-  }, [searchParams])
+  }, [searchParams]);
 
   useEffect(() => {
     if (isAuthenticated && user) {
       // Redirect based on user role
       switch (user.role) {
         case "buyer":
-          router.push("/auctions")
-          break
+          router.push("/auctions");
+          break;
         case "seller":
-          router.push("/dashboard/seller")
-          break
+          router.push("/dashboard/seller");
+          break;
         case "both":
-          router.push("/dashboard")
-          break
+          router.push("/dashboard");
+          break;
         default:
-          router.push("/")
+          router.push("/");
       }
     }
-  }, [isAuthenticated, user, router])
+  }, [isAuthenticated, user, router]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target
+    const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
-    }))
-    setError("")
-    setSuccessMessage("")
-  }
+    }));
+    setError("");
+    setSuccessMessage("");
+  };
 
   const handleSelectChange = (name: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [name]: value }))
-    setError("")
-    setSuccessMessage("")
-  }
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    setError("");
+    setSuccessMessage("");
+  };
 
   const handleRadioChange = (value: string) => {
-    setFormData((prev) => ({ ...prev, accountType: value }))
-    setError("")
-    setSuccessMessage("")
-  }
+    setFormData((prev) => ({
+      ...prev,
+      accountType: value,
+      sellerType: value === "buyer" ? "individual" : prev.sellerType, // Reset sellerType if switching to buyer
+    }));
+    setError("");
+    setSuccessMessage("");
+  };
 
-  // Separate handler for checkbox changes to avoid infinite loops
+  const handleSellerTypeChange = (value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      sellerType: value,
+      organizationName: value === "organization" ? prev.organizationName : "",
+      organizationContact: value === "organization" ? prev.organizationContact : "",
+    }));
+    setError("");
+    setSuccessMessage("");
+  };
+
   const handleCheckboxChange = (name: string, checked: boolean) => {
-    setFormData((prev) => ({ ...prev, [name]: checked }))
-    setError("")
-    setSuccessMessage("")
-  }
+    setFormData((prev) => ({
+      ...prev,
+      [name]: checked,
+    }));
+    setError("");
+    setSuccessMessage("");
+  };
 
   const validatePassword = (password: string) => {
-    if (password.length < 8) return "Password must be at least 8 characters long."
-    if (!/[a-z]/.test(password)) return "Password must contain a lowercase letter."
-    if (!/[A-Z]/.test(password)) return "Password must contain an uppercase letter."
-    if (!/\d/.test(password)) return "Password must contain a number."
-    return ""
-  }
+    if (password.length < 8) return "Password must be at least 8 characters long.";
+    if (!/[a-z]/.test(password)) return "Password must contain a lowercase letter.";
+    if (!/[A-Z]/.test(password)) return "Password must contain an uppercase letter.";
+    if (!/\d/.test(password)) return "Password must contain a number.";
+    return "";
+  };
 
   const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
-    setSuccessMessage("")
+    e.preventDefault();
+    setError("");
+    setSuccessMessage("");
 
     if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match.")
-      return
+      setError("Passwords do not match.");
+      return;
     }
 
-    const passwordError = validatePassword(formData.password)
+    const passwordError = validatePassword(formData.password);
     if (passwordError) {
-      setError(passwordError)
-      return
+      setError(passwordError);
+      return;
     }
 
     if (!formData.agreeToTerms) {
-      setError("You must agree to the Terms of Service and Privacy Policy.")
-      return
+      setError("You must agree to the Terms of Service and Privacy Policy.");
+      return;
     }
 
-    setIsLoading(true)
+    setIsLoading(true);
     try {
       const response = await fetch("/api/profiles", {
         method: "POST",
@@ -149,44 +167,46 @@ export default function RegisterPage() {
         body: JSON.stringify({
           email: formData.email,
           password: formData.password,
-          fname: formData.firstName, // Renamed from firstName
-          lname: formData.lastName, // Renamed from lastName
+          fname: formData.firstName,
+          lname: formData.lastName,
           location: formData.location,
-          role: formData.accountType, // Maps to role
-          type: formData.companyType || (formData.accountType === "seller" || formData.accountType === "both" ? "individual" : undefined), // Default type if seller/both
+          role: formData.accountType,
+          type: (formData.accountType === "seller" || formData.accountType === "both") ? formData.sellerType : undefined,
+          organizationName: formData.sellerType === "organization" ? formData.organizationName : undefined,
+          organizationContact: formData.sellerType === "organization" ? formData.organizationContact : undefined,
         }),
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (data.success) {
         setSuccessMessage(
           `Account created successfully! Welcome, ${formData.firstName}. Redirecting to your dashboard...`,
-        )
+        );
         setTimeout(() => {
           switch (formData.accountType) {
             case "buyer":
-              router.push("/auctions")
-              break
+              router.push("/auctions");
+              break;
             case "seller":
-              router.push("/dashboard/seller")
-              break
+              router.push("/dashboard/seller");
+              break;
             case "both":
-              router.push("/dashboard")
-              break
+              router.push("/dashboard");
+              break;
             default:
-              router.push("/")
+              router.push("/");
           }
-        }, 2000)
+        }, 2000);
       } else {
-        setError(data.error || "Registration failed. Please try again.")
+        setError(data.error || "Registration failed. Please try again.");
       }
     } catch (error) {
-      setError("An error occurred during registration. Please try again.")
+      setError("An error occurred during registration. Please try again.");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900">
@@ -260,16 +280,16 @@ export default function RegisterPage() {
                         features: ["All buyer features", "All seller features", "Priority support"],
                       },
                     ].map((item) => {
-                      const Icon = item.icon
-                      const isSelected = formData.accountType === item.value
+                      const Icon = item.icon;
+                      const isSelected = formData.accountType === item.value;
                       return (
                         <div key={item.value} className="relative">
                           <RadioGroupItem value={item.value} id={item.value} className="peer sr-only" />
                           <Label
                             htmlFor={item.value}
-                            className={`relative flex flex-col p-6 rounded-xl cursor-pointer transition-all duration-300 border-2 ${
+                            className={`relative flex flex-col items-center justify-between p-6 rounded-xl cursor-pointer transition-all duration-300 border-2 h-72 ${
                               isSelected
-                                ? "border-white/40 bg-white/20 shadow-lg scale-105"
+                                ? "border-white/40 bg-white/20 shadow-lg"
                                 : "border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20"
                             }`}
                           >
@@ -279,7 +299,7 @@ export default function RegisterPage() {
                             ></div>
 
                             {/* Content */}
-                            <div className="relative text-center">
+                            <div className="relative flex flex-col items-center text-center h-full">
                               <div
                                 className={`inline-flex items-center justify-center w-12 h-12 rounded-lg mb-3 bg-gradient-to-br ${item.color} shadow-lg`}
                               >
@@ -288,8 +308,8 @@ export default function RegisterPage() {
                               <h3 className="font-bold text-white text-lg mb-1">{item.label}</h3>
                               <p className="text-gray-300 text-sm mb-3">{item.desc}</p>
 
-                              {/* Features List */}
-                              <ul className="space-y-1">
+                              {/* Centered Features List */}
+                              <ul className="flex-1 flex flex-col items-center justify-center space-y-1 text-center">
                                 {item.features.map((feature, index) => (
                                   <li
                                     key={index}
@@ -310,7 +330,7 @@ export default function RegisterPage() {
                             )}
                           </Label>
                         </div>
-                      )
+                      );
                     })}
                   </RadioGroup>
                 </div>
@@ -400,43 +420,71 @@ export default function RegisterPage() {
 
                 {(formData.accountType === "seller" || formData.accountType === "both") && (
                   <div className="space-y-4 pt-4 border-t">
-                    <h3 className="font-semibold text-lg text-gray-50">Business Information (for Sellers)</h3>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="companyName" className="text-gray-200">
-                        Company Name (Optional)
-                      </Label>
-                      <div className="relative">
-                        <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                        <Input
-                          id="companyName"
-                          name="companyName"
-                          placeholder="Acme Corp"
-                          className="pl-10"
-                          value={formData.companyName}
-                          onChange={handleInputChange}
-                        />
+                    <Label className="text-lg font-semibold text-white block text-center">Seller Type</Label>
+                    <RadioGroup
+                      value={formData.sellerType}
+                      onValueChange={handleSellerTypeChange}
+                      className="grid grid-cols-1 md:grid-cols-2 gap-4"
+                    >
+                      {[
+                        { value: "individual", label: "Individual" },
+                        { value: "organization", label: "Organization" },
+                      ].map((item) => (
+                        <div key={item.value} className="relative">
+                          <RadioGroupItem value={item.value} id={item.value} className="peer sr-only" />
+                          <Label
+                            htmlFor={item.value}
+                            className={`flex items-center justify-center p-4 rounded-xl cursor-pointer transition-all duration-300 border-2 w-full ${
+                              formData.sellerType === item.value
+                                ? "border-white/40 bg-white/20 shadow-lg"
+                                : "border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20"
+                            }`}
+                          >
+                            {item.label}
+                          </Label>
+                        </div>
+                      ))}
+                    </RadioGroup>
+
+                    {formData.sellerType === "organization" && (
+                      <div className="space-y-4 pt-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="organizationName" className="text-gray-200 font-medium">
+                            Organization Name
+                          </Label>
+                          <div className="relative">
+                            <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                            <Input
+                              id="organizationName"
+                              name="organizationName"
+                              placeholder="e.g., Acme Auctions"
+                              className="pl-10 bg-white/10 border-white/20 text-white placeholder-gray-400 focus:border-blue-400 focus:bg-white/15 transition-all"
+                              value={formData.organizationName}
+                              onChange={handleInputChange}
+                              required
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="organizationContact" className="text-gray-200 font-medium">
+                            Organization Contact
+                          </Label>
+                          <div className="relative">
+                            <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                            <Input
+                              id="organizationContact"
+                              name="organizationContact"
+                              type="tel"
+                              placeholder="+1 (555) 123-4567"
+                              className="pl-10 bg-white/10 border-white/20 text-white placeholder-gray-400 focus:border-blue-400 focus:bg-white/15 transition-all"
+                              value={formData.organizationContact}
+                              onChange={handleInputChange}
+                              required
+                            />
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="companyType" className="text-gray-200">
-                        Business Type
-                      </Label>
-                      <Select
-                        value={formData.companyType}
-                        onValueChange={(value) => handleSelectChange("companyType", value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select business type..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="individual">Individual Seller</SelectItem>
-                          <SelectItem value="small_business">Small Business</SelectItem>
-                          <SelectItem value="enterprise">Enterprise</SelectItem>
-                          <SelectItem value="auction_house">Auction House</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    )}
                   </div>
                 )}
 
@@ -590,5 +638,5 @@ export default function RegisterPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }
