@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { CheckCircle, ArrowRight, Server, Code, Palette } from "lucide-react"
-import Link from "next/link"
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { CheckCircle, ArrowRight, Server, Code, Palette } from "lucide-react";
+import Link from "next/link";
 
 export default function GetStartedPage() {
   const engagementModels = [
@@ -60,7 +60,7 @@ export default function GetStartedPage() {
       bestFor: "Businesses looking for quick market entry",
       href: "/get-started/white-label",
     },
-  ]
+  ];
 
   const subscriptionPlans = [
     {
@@ -115,7 +115,7 @@ export default function GetStartedPage() {
       limitations: [],
       popular: false,
     },
-  ]
+  ];
 
   const implementationProcess = [
     {
@@ -142,7 +142,7 @@ export default function GetStartedPage() {
       description: "Go-live support and ongoing maintenance to ensure optimal performance.",
       duration: "Ongoing",
     },
-  ]
+  ];
 
   return (
     <div className="min-h-screen">
@@ -178,7 +178,10 @@ export default function GetStartedPage() {
 
             <div className="grid lg:grid-cols-3 gap-8 mb-16">
               {engagementModels.map((model, index) => (
-                <Card key={index} className="relative border-0 shadow-xl hover:shadow-2xl transition-all duration-300">
+                <Card
+                  key={index}
+                  className="relative border-0 shadow-xl hover:shadow-2xl transition-all duration-300 h-full flex flex-col"
+                >
                   <CardHeader className="pb-4">
                     <div className="w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
                       <div className="text-blue-600">{model.icon}</div>
@@ -186,8 +189,8 @@ export default function GetStartedPage() {
                     <CardTitle className="text-xl text-slate-900">{model.title}</CardTitle>
                     <CardDescription className="text-slate-600">{model.description}</CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div>
+                  <CardContent className="flex flex-col flex-grow space-y-6">
+                    <div className="flex-grow">
                       <h4 className="font-semibold text-slate-900 mb-3">Key Features:</h4>
                       <ul className="space-y-2">
                         {model.features.map((feature, idx) => (
@@ -199,29 +202,33 @@ export default function GetStartedPage() {
                       </ul>
                     </div>
 
-                    <div className="space-y-2 pt-4 border-t">
-                      <div className="flex justify-between">
-                        <span className="text-sm text-slate-600">Investment:</span>
-                        <span className="font-semibold text-slate-900">{model.pricing}</span>
+                    <div className="space-y-6">
+                      <div className="pt-4 border-t border-slate-200">
+                        <div className="space-y-2">
+                          <div className="flex justify-between">
+                            <span className="text-sm text-slate-600">Investment:</span>
+                            <span className="font-semibold text-slate-900">{model.pricing}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-sm text-slate-600">Timeline:</span>
+                            <span className="font-semibold text-slate-900">{model.timeline}</span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm text-slate-600">Timeline:</span>
-                        <span className="font-semibold text-slate-900">{model.timeline}</span>
+
+                      <div className="bg-slate-50 p-4 rounded-lg">
+                        <p className="text-sm text-slate-600">
+                          <strong>Best for:</strong> {model.bestFor}
+                        </p>
                       </div>
-                    </div>
 
-                    <div className="bg-slate-50 p-4 rounded-lg">
-                      <p className="text-sm text-slate-600">
-                        <strong>Best for:</strong> {model.bestFor}
-                      </p>
+                      <Button className="w-full" asChild>
+                        <Link href={model.href}>
+                          Learn More
+                          <ArrowRight className="ml-2 h-4 w-4" />
+                        </Link>
+                      </Button>
                     </div>
-
-                    <Button className="w-full" asChild>
-                      <Link href={model.href}>
-                        Learn More
-                        <ArrowRight className="ml-2 h-4 w-4" />
-                      </Link>
-                    </Button>
                   </CardContent>
                 </Card>
               ))}
@@ -350,5 +357,5 @@ export default function GetStartedPage() {
         </div>
       </section>
     </div>
-  )
+  );
 }
