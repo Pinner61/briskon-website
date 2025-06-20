@@ -137,7 +137,7 @@ export default function LoginPage() {
       <Floating3DShape className="top-32 right-32 animate-rotate-slow" shape="cube" size={40} color="rgba(59, 130, 246, 0.15)" />
       <Floating3DShape className="bottom-32 left-16 animate-float" shape="gavel" size={60} color="rgba(168, 85, 247, 0.15)" />
 
-      <div className="w-full max-w-2xl">
+      <div className="w-full max-w-4xl">
         <Card className="bg-white/90 backdrop-blur-sm border border-gray-100 shadow-xl rounded-2xl overflow-hidden transform transition-all duration-300 hover:shadow-2xl card-hover">
           <CardHeader className="bg-gradient-to-br from-blue-50 via-white to-cyan-50 p-10 text-center relative">
             <div className="absolute inset-0 bg-grid-gray-200/[0.1] bg-[size:20px_20px]"></div>
