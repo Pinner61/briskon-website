@@ -444,12 +444,7 @@ export default function OnPremisePage() {
                 <ArrowRight className="h-5 w-5 ml-2" />
               </Link>
             </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              className="border-white text-white hover:bg-white hover:text-blue-600"
-              asChild
-            >
+            <Button size="lg" variant="secondary" className="bg-white text-blue-600 hover:bg-slate-100" asChild>
               <Link href="/demo">Schedule Consultation</Link>
             </Button>
           </div>
