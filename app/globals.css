@@ -12,6 +12,7 @@ body {
   }
 }
 
+/* Custom Variables */
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -48,6 +49,7 @@ body {
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
+
   .dark {
     --background: 0 0% 3.9%;
     --foreground: 0 0% 98%;
@@ -82,9 +84,7 @@ body {
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
-}
 
-@layer base {
   * {
     @apply border-border;
   }
@@ -93,14 +93,13 @@ body {
   }
 }
 
-/* Form input styling */
+/* Form Input Styling */
 .bg-yellow-400,
 .bg-yellow-300,
 .bg-yellow-500 {
   background-color: white !important;
 }
 
-/* Input field styling */
 input[type="text"],
 input[type="email"],
 input[type="tel"],
@@ -120,14 +119,14 @@ select:focus {
   box-shadow: 0 0 0 1px #37352f !important;
 }
 
-/* Placeholder styling */
+/* Placeholder Styling */
 input::placeholder,
 textarea::placeholder {
   color: #9ca3af !important;
   opacity: 1 !important;
 }
 
-/* Select dropdown styling */
+/* Select Dropdown Styling */
 [role="combobox"] {
   background-color: white !important;
   border: 1px solid #d1d5db !important;
@@ -139,14 +138,13 @@ textarea::placeholder {
   box-shadow: 0 0 0 1px #37352f !important;
 }
 
-/* Remove any yellow backgrounds from form elements */
+/* Remove Any Yellow Backgrounds from Form Elements */
 .form-control,
 .form-select,
 .form-input {
   background-color: white !important;
 }
 
-/* Override any yellow utility classes */
 .bg-yellow-50,
 .bg-yellow-100,
 .bg-yellow-200,
@@ -156,16 +154,13 @@ textarea::placeholder {
   background-color: white !important;
 }
 
-/* Ensure text color is proper */
 .text-yellow-600,
 .text-yellow-700,
 .text-yellow-800 {
   color: #374151 !important;
 }
 
-/* Add these button styles at the end of the file */
-
-/* Button visibility fixes */
+/* Button Visibility Fixes */
 .btn,
 button[class*="bg-gradient"],
 a[class*="bg-gradient"] {
@@ -173,7 +168,6 @@ a[class*="bg-gradient"] {
   z-index: 10;
 }
 
-/* Ensure buttons are visible on all backgrounds */
 .bg-gradient-to-br button,
 .bg-blue-600 button,
 .bg-blue-700 button,
@@ -181,20 +175,18 @@ a[class*="bg-gradient"] {
   border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
-/* Fix for outline buttons */
 button[variant="outline"],
 a[variant="outline"] {
   border-width: 2px;
 }
 
-/* Ensure white buttons on blue backgrounds are visible */
 .bg-blue-600 .bg-white,
 .bg-blue-700 .bg-white,
 .bg-gradient-to-br .bg-white {
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
-/* Smooth Animation Keyframes */
+/* Animation Keyframes */
 @keyframes float {
   0%,
   100% {
@@ -298,6 +290,38 @@ a[variant="outline"] {
   }
 }
 
+@keyframes scale-up {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+@keyframes pulse-once {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+}
+
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
 /* Animation Utility Classes */
 .animate-float {
   animation: float 6s ease-in-out infinite;
@@ -341,7 +365,20 @@ a[variant="outline"] {
   animation: morph 8s ease-in-out infinite;
 }
 
-/* Smooth transitions for all interactive elements */
+.animate-scale-up {
+  animation: scale-up 1.5s ease-in-out infinite;
+}
+
+.animate-pulse-once {
+  animation: pulse-once 1s ease-in-out 1;
+}
+
+.gradient-animate {
+  background-size: 400% 400%;
+  animation: gradient-shift 8s ease infinite;
+}
+
+/* Smooth Transitions */
 .transition-smooth {
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -350,7 +387,7 @@ a[variant="outline"] {
   transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 
-/* 3D Transform utilities */
+/* 3D Transform Utilities */
 .transform-3d {
   transform-style: preserve-3d;
 }
@@ -367,7 +404,7 @@ a[variant="outline"] {
   transform: rotateY(12deg);
 }
 
-/* Hover effects */
+/* Hover Effects */
 .hover-lift {
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
@@ -385,7 +422,7 @@ a[variant="outline"] {
   transform: perspective(1000px) rotateX(10deg) rotateY(10deg);
 }
 
-/* Stagger animation delays */
+/* Stagger Animation Delays */
 .delay-100 {
   animation-delay: 0.1s;
 }
@@ -411,12 +448,12 @@ a[variant="outline"] {
   animation-delay: 1.2s;
 }
 
-/* Smooth scroll behavior */
+/* Smooth Scroll Behavior */
 html {
   scroll-behavior: smooth;
 }
 
-/* Enhanced card hover effects */
+/* Enhanced Card Hover Effects */
 .card-hover {
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   transform-style: preserve-3d;
@@ -425,22 +462,4 @@ html {
 .card-hover:hover {
   transform: translateY(-12px) rotateX(5deg) rotateY(5deg);
   box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
-}
-
-/* Gradient animations */
-.gradient-animate {
-  background-size: 400% 400%;
-  animation: gradient-shift 8s ease infinite;
-}
-
-@keyframes gradient-shift {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
 }
