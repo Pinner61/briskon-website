@@ -288,7 +288,7 @@ export default function RegisterPage() {
       <Floating3DShape className="bottom-32 left-16 animate-float" shape="sphere" size={60} color="rgba(168, 85, 247, 0.15)" />
 
       <div className="relative container mx-auto px-4 py-12 md:py-20">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           {/* Enhanced Header */}
           <div className="text-center mb-12">
             <Link href="/" className="inline-block group">
