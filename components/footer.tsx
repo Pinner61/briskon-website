@@ -92,11 +92,6 @@ export function Footer() {
                     AI Capabilities
                   </Link>
                 </li>
-                <li>
-                  <Link href="/demo" className="text-gray-600 hover:text-blue-600 transition-colors">
-                    Live Demo
-                  </Link>
-                </li>
               </ul>
             </div>
 
