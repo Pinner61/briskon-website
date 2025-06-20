@@ -144,61 +144,69 @@ export default function DemoPage() {
 
           <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto mb-16">
             {demoOptions.map((option, index) => (
-              <Card
-                key={option.id}
-                className={`group cursor-pointer transition-all duration-300 hover:shadow-xl border-2 animate-fade-in-up ${
-                  selectedDemo === option.id
-                    ? "border-blue-500 shadow-lg"
-                    : "border-gray-200 dark:border-gray-700 hover:border-blue-300"
-                } ${option.popular ? "ring-2 ring-blue-500 ring-opacity-20" : ""}`}
-                style={{ animationDelay: `${index * 0.1}s` }}
-                onClick={() => setSelectedDemo(option.id)}
-              >
-                {option.popular && (
-                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                    <Badge className="bg-blue-500 text-white px-3 py-1">
-                      <Star className="h-3 w-3 mr-1" />
-                      Most Popular
-                    </Badge>
-                  </div>
-                )}
-                <CardHeader className="text-center pb-4">
-                  <div className="mx-auto mb-4 p-3 bg-blue-100 dark:bg-blue-900/20 rounded-full w-fit group-hover:scale-110 transition-transform">
-                    <div className="text-blue-600 dark:text-blue-400">{option.icon}</div>
-                  </div>
-                  <CardTitle className="text-xl mb-2">{option.title}</CardTitle>
-                  <CardDescription className="text-base">{option.description}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-                        <Clock className="h-4 w-4" />
-                        {option.duration}
-                      </div>
-                      <Badge variant="outline">{option.type}</Badge>
-                    </div>
+<Card
+  key={option.id}
+  className={`flex flex-col justify-between group cursor-pointer transition-all duration-300 hover:shadow-xl border-2 animate-fade-in-up ${
+    selectedDemo === option.id
+      ? "border-blue-500 shadow-lg"
+      : "border-gray-200 dark:border-gray-700 hover:border-blue-300"
+  } ${option.popular ? "ring-2 ring-blue-500 ring-opacity-20" : ""}`}
+  style={{ animationDelay: `${index * 0.1}s` }}
+  onClick={() => setSelectedDemo(option.id)}
+>
+  {/* Popular Badge */}
+  {option.popular && (
+    <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+      <Badge className="bg-blue-500 text-white px-3 py-1">
+        <Star className="h-3 w-3 mr-1" />
+        Most Popular
+      </Badge>
+    </div>
+  )}
 
-                    <div className="space-y-2">
-                      {option.features.map((feature, idx) => (
-                        <div key={idx} className="flex items-center gap-2 text-sm">
-                          <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-                          <span>{feature}</span>
-                        </div>
-                      ))}
-                    </div>
+  {/* Card Header */}
+  <CardHeader className="text-center pb-4">
+    <div className="mx-auto mb-4 p-3 bg-blue-100 dark:bg-blue-900/20 rounded-full w-fit group-hover:scale-110 transition-transform">
+      <div className="text-blue-600 dark:text-blue-400">{option.icon}</div>
+    </div>
+    <CardTitle className="text-xl mb-2">{option.title}</CardTitle>
+    <CardDescription className="text-base">{option.description}</CardDescription>
+  </CardHeader>
 
-                    <Button
-                      className={`w-full mt-4 ${
-                        selectedDemo === option.id ? "bg-blue-600 hover:bg-blue-700" : "bg-gray-600 hover:bg-gray-700"
-                      }`}
-                    >
-                      {option.id === "self-guided" ? "Start Now" : "Select This Demo"}
-                      <ArrowRight className="h-4 w-4 ml-2" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+  {/* Card Content with pushed button */}
+  <CardContent className="flex flex-col flex-grow justify-between">
+    <div className="space-y-4">
+      <div className="flex items-center justify-between text-sm">
+        <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+          <Clock className="h-4 w-4" />
+          {option.duration}
+        </div>
+        <Badge variant="outline">{option.type}</Badge>
+      </div>
+
+      <div className="space-y-2">
+        {option.features.map((feature, idx) => (
+          <div key={idx} className="flex items-center gap-2 text-sm">
+            <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+            <span>{feature}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    {/* Button aligned at the bottom */}
+    <Button
+      className={`w-full mt-6 ${
+        selectedDemo === option.id
+          ? "bg-blue-600 hover:bg-blue-700"
+          : "bg-gray-600 hover:bg-gray-700"
+      }`}
+    >
+      {option.id === "self-guided" ? "Start Now" : "Select This Demo"}
+      <ArrowRight className="h-4 w-4 ml-2" />
+    </Button>
+  </CardContent>
+</Card>
             ))}
           </div>
         </div>
@@ -537,12 +545,7 @@ export default function DemoPage() {
                   Get Started Today
                 </Link>
               </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                asChild
-                className="border-white text-white hover:bg-white hover:text-blue-600"
-              >
+              <Button size="lg" variant="secondary" asChild className="bg-white text-blue-600 hover:bg-blue-50">
                 <Link href="/contact">
                   <Users className="h-5 w-5 mr-2" />
                   Talk to Sales
