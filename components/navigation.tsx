@@ -369,14 +369,6 @@ function Navigation({ highlightSolutions = false }: { highlightSolutions?: boole
                 </Button>
               </>
             )}
-            <Button
-              variant="outline"
-              className="hidden md:inline-flex border-neutral-300 text-neutral-700 hover:bg-neutral-50 hover:border-brand-300 hover:text-brand-600 transition-all duration-200 dark:border-neutral-600 dark:text-neutral-200 dark:hover:bg-neutral-800 dark:hover:border-brand-400 dark:hover:text-brand-400"
-              onClick={onDashboard}
-            >
-              Dashboard
-            </Button>
-
             {/* Mobile menu */}
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
               <SheetTrigger asChild className="lg:hidden">
