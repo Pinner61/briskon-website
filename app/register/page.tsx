@@ -299,10 +299,6 @@ export default function RegisterPage() {
                     <UserPlus className="w-8 h-8 text-white" />
                   </div>
                 </div>
-                <div className="text-left">
-                  <h1 className="text-3xl font-bold text-gray-900">Briskon Auctions</h1>
-                  <p className="text-blue-700 text-sm font-medium">Create Account</p>
-                </div>
               </div>
             </Link>
             <div className="max-w-md mx-auto">
@@ -329,82 +325,80 @@ export default function RegisterPage() {
                     Choose Your Account Type
                   </Label>
                   <RadioGroup
-                    value={formData.accountType}
-                    onValueChange={handleRadioChange}
-                    className="grid grid-cols-1 md:grid-cols-3 gap-6"
-                  >
-                    {[
-                      {
-                        value: "buyer",
-                        label: "Buyer",
-                        icon: ShoppingBag,
-                        desc: "Bid on exclusive auctions",
-                        color: "from-green-500 to-emerald-600",
-                        features: ["Access to all auctions", "Bid tracking", "Watchlist"],
-                      },
-                      {
-                        value: "seller",
-                        label: "Seller",
-                        icon: Briefcase,
-                        desc: "List items for auction",
-                        color: "from-purple-500 to-violet-600",
-                        features: ["Create auctions", "Seller dashboard", "Analytics"],
-                      },
-                      {
-                        value: "both",
-                        label: "Buyer & Seller",
-                        icon: Shield,
-                        desc: "Complete platform access",
-                        color: "from-blue-500 to-indigo-600",
-                        features: ["All buyer features", "All seller features", "Priority support"],
-                      },
-                    ].map((item) => {
-                      const Icon = item.icon;
-                      const isSelected = formData.accountType === item.value;
-                      return (
-                        <div key={item.value} className="relative">
-                          <RadioGroupItem value={item.value} id={item.value} className="peer sr-only" />
-                          <Label
-                            htmlFor={item.value}
-                            className={`relative flex flex-col items-center justify-between p-6 rounded-xl cursor-pointer transition-all duration-300 border-2 h-72 ${
-                              isSelected
-                                ? "border-gray-300 bg-gray-50 shadow-md hover:shadow-lg"
-                                : "border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300"
-                            }`}
-                          >
-                            <div
-                              className={`absolute inset-0 bg-gradient-to-br ${item.color} opacity-10 rounded-xl`}
-                            ></div>
-                            <div className="relative flex flex-col items-center text-center h-full">
-                              <div
-                                className={`inline-flex items-center justify-center w-12 h-12 rounded-lg mb-3 bg-gradient-to-br ${item.color} shadow-md animate-scale-up`}
-                              >
-                                <Icon className="w-6 h-6 text-white" />
-                              </div>
-                              <h3 className="font-bold text-gray-900 text-lg mb-1">{item.label}</h3>
-                              <p className="text-gray-600 text-sm mb-3">{item.desc}</p>
-                              <ul className="flex-1 flex flex-col items-center justify-center space-y-1 text-center">
-                                {item.features.map((feature, index) => (
-                                  <li
-                                    key={index}
-                                    className="text-xs text-gray-500 flex items-center justify-center gap-1"
-                                  >
-                                    <div className="w-1 h-1 bg-gray-500 rounded-full"></div>
-                                    {feature}
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                            {isSelected && (
-                              <div className="absolute -top-2 -right-2 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center shadow-md">
-                                <div className="w-2 h-2 bg-white rounded-full"></div>
-                              </div>
-                            )}
-                          </Label>
-                        </div>
-                      );
-                    })}
-                  </RadioGroup>
+  value={formData.accountType}
+  onValueChange={handleRadioChange}
+  className="grid grid-cols-1 md:grid-cols-3 gap-6"
+>
+  {[
+    {
+      value: "buyer",
+      label: "Buyer",
+      icon: ShoppingBag,
+      desc: "Bid on exclusive auctions",
+      color: "from-green-500 to-emerald-600",
+      features: ["Access to all auctions", "Bid tracking", "Watchlist"],
+    },
+    {
+      value: "seller",
+      label: "Seller",
+      icon: Briefcase,
+      desc: "List items for auction",
+      color: "from-purple-500 to-violet-600",
+      features: ["Create auctions", "Seller dashboard", "Analytics"],
+    },
+    {
+      value: "both",
+      label: "Buyer & Seller",
+      icon: Shield,
+      desc: "Complete platform access",
+      color: "from-blue-500 to-indigo-600",
+      features: ["All buyer features", "All seller features", "Priority support"],
+    },
+  ].map((item) => {
+    const Icon = item.icon;
+    const isSelected = formData.accountType === item.value;
+    return (
+      <div key={item.value} className="relative">
+        <RadioGroupItem value={item.value} id={item.value} className="peer sr-only" />
+        <Label
+          htmlFor={item.value}
+          className={`relative flex flex-col items-center justify-between p-6 rounded-xl cursor-pointer transition-all duration-300 border-2 h-72 ${
+            isSelected
+              ? "border-gray-300 bg-gray-50 shadow-md hover:shadow-lg"
+              : "border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300"
+          }`}
+        >
+          <div className={`absolute inset-0 bg-gradient-to-br ${item.color} opacity-10 rounded-xl`}></div>
+          <div className="relative flex flex-col items-center text-center h-full">
+            <div
+              className={`inline-flex items-center justify-center w-12 h-12 rounded-lg mb-3 bg-gradient-to-br ${item.color} shadow-md animate-scale-up`}
+            >
+              <Icon className="w-6 h-6 text-white" />
+            </div>
+            <h3 className="font-bold text-gray-900 text-lg mb-1">{item.label}</h3>
+            <p className="text-gray-600 text-sm mb-3">{item.desc}</p>
+            <ul className="flex-1 flex flex-col space-y-1 text-left pl-4">
+              {item.features.map((feature, index) => (
+                <li
+                  key={index}
+                  className="text-xs text-gray-500 flex items-start gap-1"
+                >
+                  <div className="w-1 h-1 bg-gray-500 rounded-full mt-1.5"></div>
+                  {feature}
+                </li>
+              ))}
+            </ul>
+          </div>
+          {isSelected && (
+            <div className="absolute -top-2 -right-2 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center shadow-md">
+              <div className="w-2 h-2 bg-white rounded-full"></div>
+            </div>
+          )}
+        </Label>
+      </div>
+    );
+  })}
+</RadioGroup>
                 </div>
 
                 <div className="space-y-6 pt-8 border-t border-gray-200">
