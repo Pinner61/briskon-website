@@ -744,7 +744,7 @@ export default function HomePage() {
       </section>
 
       {/* Enhanced CTA Section */}
-      <section className="py-20 bg-gradient-to-br from-blue-600 via-blue-700 to-cyan-600 text-white relative overflow-hidden">
+      <section className="py-20 bg-[#1db0e5] text-white relative overflow-hidden">
         <div className="absolute inset-0 bg-grid-white/[0.1] bg-[size:50px_50px]" />
         <div className="absolute top-10 right-10 w-32 h-32 bg-white/10 rounded-full blur-xl animate-pulse" />
         <div className="absolute bottom-10 left-10 w-24 h-24 bg-white/10 rounded-full blur-xl animate-pulse delay-1000" />
