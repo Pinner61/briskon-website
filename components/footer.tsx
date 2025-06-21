@@ -58,12 +58,12 @@ export function Footer() {
                   </Link>
                 </li>
                 <li>
-                  <Link href="/contact" className="text-gray-600 hover:text-blue-600 transition-colors">
+                  <Link href="/contact" className="text-gray-600 font-semibold underline hover:text-blue-600 transition-colors">
                     Contact Sales
                   </Link>
                 </li>
                 <li>
-                  <Link href="/demo" className="text-gray-600 hover:text-blue-600 transition-colors">
+                  <Link href="/demo" className="text-gray-600 font-semibold underline hover:text-blue-600 transition-colors">
                     Live Demo
                   </Link>
                 </li>
@@ -90,6 +90,11 @@ export function Footer() {
                     className="text-gray-600 hover:text-blue-600 transition-colors"
                   >
                     AI Capabilities
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/demo" className="text-gray-600 hover:text-blue-600 transition-colors">
+                    Live Demo
                   </Link>
                 </li>
               </ul>
