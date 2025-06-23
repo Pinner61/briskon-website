@@ -445,7 +445,7 @@ export default function RegisterPage() {
                       </div>
                     </div>
                   </div>
-
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="email" className="text-gray-700 font-medium">
                       Email Address
@@ -483,6 +483,9 @@ export default function RegisterPage() {
                     </div>
                   </div>
                 </div>
+                </div>
+
+                {/* Seller Type Section */}
 
                 {(formData.accountType === "seller" || formData.accountType === "both") && (
                   <div className="space-y-4 pt-4 border-t border-gray-200">
@@ -513,7 +516,7 @@ export default function RegisterPage() {
                     </RadioGroup>
 
                     {formData.sellerType === "organization" && (
-                      <div className="space-y-4 pt-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                           <Label htmlFor="organizationName" className="text-gray-700 font-medium">
                             Organization Name
