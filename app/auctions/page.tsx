@@ -264,226 +264,247 @@ export default function AuctionsPage() {
     [searchTerm, selectedCategory, selectedLocation, selectedAuctionType, sortBy, allAuctionItems]
   );
 
-  const AuctionCard = ({ auction }: { auction: AuctionItem }) => (
-    <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 group relative border border-gray-200 bg-white dark:bg-gray-800">
-      {auction.featured && (
-        <div className="absolute top-2 left-2 z-10">
-          <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold">
-            FEATURED
-          </Badge>
-        </div>
-      )}
+  const AuctionCard = ({ auction }: { auction: AuctionItem }) => {
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-      <div className="relative">
-        <Image
-          src={auction.image || "/placeholder.svg"}
-          alt={auction.title}
-          width={400}
-          height={300}
-          className="w-full h-48 object-cover"
-        />
-        {/* Status Badge */}
-        <div className="absolute top-2 right-2">
-          {auction.status === "live" && (
-            <Badge className="bg-green-500 text-white animate-pulse">
-              <div className="w-2 h-2 bg-white rounded-full mr-1"></div>
-              LIVE
-            </Badge>
-          )}
-          {auction.status === "upcoming" && (
-            <Badge className="bg-blue-500 text-white">
-              <Calendar className="h-3 w-3 mr-1" />
-              UPCOMING
-            </Badge>
-          )}
-          {auction.status === "closed" && (
-            <Badge className="bg-gray-500 text-white">
-              <CheckCircle className="h-3 w-3 mr-1" />
-              CLOSED
-            </Badge>
-          )}
-        </div>
+    useEffect(() => {
+      if (auction.productimages && auction.productimages.length > 1) {
+        const interval = setInterval(() => {
+          setCurrentImageIndex((prev) =>
+            prev === auction.productimages!.length - 1 ? 0 : prev + 1
+          );
+        }, 5000); // Change image every 5 seconds
+        return () => clearInterval(interval);
+      }
+    }, [auction.productimages]);
 
-        {/* Auction Type Badge */}
-        <div className="absolute bottom-2 left-2">
-          <Badge
-            variant="secondary"
-            className="flex items-center gap-1 bg-white/90 backdrop-blur-sm"
-          >
-            {auction.auctionType === "forward" ? (
-              <TrendingUp className="h-3 w-3 text-green-500" />
-            ) : (
-              <TrendingDown className="h-3 w-3 text-blue-500" />
+    const currentImage = useMemo(() => {
+      return auction.productimages && auction.productimages.length > 0
+        ? auction.productimages[currentImageIndex]
+        : auction.image || "/placeholder.svg";
+    }, [auction.productimages, currentImageIndex, auction.image]);
+
+    return (
+      <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 group relative border border-gray-200 bg-white dark:bg-gray-800">
+        {auction.featured && (
+          <div className="absolute top-2 left-2 z-10">
+            <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold">
+              FEATURED
+            </Badge>
+          </div>
+        )}
+
+        <div className="relative">
+          <Image
+            src={currentImage}
+            alt={auction.title}
+            width={400}
+            height={300}
+            className="w-full h-48 object-cover"
+          />
+          {/* Status Badge */}
+          <div className="absolute top-2 right-2">
+            {auction.status === "live" && (
+              <Badge className="bg-green-500 text-white animate-pulse">
+                <div className="w-2 h-2 bg-white rounded-full mr-1"></div>
+                LIVE
+              </Badge>
             )}
-            {auction.auctionType === "forward" ? "Selling" : "Buying"}
-          </Badge>
-        </div>
-
-        {/* Quick Actions */}
-        <div className="absolute bottom-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <Button
-            size="sm"
-            variant="secondary"
-            className="h-8 w-8 p-0 bg-white/90 backdrop-blur-sm"
-          >
-            <Heart className="h-3 w-3" />
-          </Button>
-          <Button
-            size="sm"
-            variant="secondary"
-            className="h-8 w-8 p-0 bg-white/90 backdrop-blur-sm"
-          >
-            <Share2 className="h-3 w-3" />
-          </Button>
-        </div>
-      </div>
-
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-xs">
-              {auction.category}
-            </Badge>
-            {auction.verified && (
-              <Badge variant="outline" className="text-xs text-green-600 border-green-200">
+            {auction.status === "upcoming" && (
+              <Badge className="bg-blue-500 text-white">
+                <Calendar className="h-3 w-3 mr-1" />
+                UPCOMING
+              </Badge>
+            )}
+            {auction.status === "closed" && (
+              <Badge className="bg-gray-500 text-white">
                 <CheckCircle className="h-3 w-3 mr-1" />
-                Verified
+                CLOSED
               </Badge>
             )}
           </div>
-          <div className="flex items-center gap-1 text-xs text-gray-500">
-            <Eye className="h-3 w-3" />
-            {auction.views}
+
+          {/* Auction Type Badge */}
+          <div className="absolute bottom-2 left-2">
+            <Badge
+              variant="secondary"
+              className="flex items-center gap-1 bg-white/90 backdrop-blur-sm"
+            >
+              {auction.auctionType === "forward" ? (
+                <TrendingUp className="h-3 w-3 text-green-500" />
+              ) : (
+                <TrendingDown className="h-3 w-3 text-blue-500" />
+              )}
+              {auction.auctionType === "forward" ? "Selling" : "Buying"}
+            </Badge>
+          </div>
+
+          {/* Quick Actions */}
+          <div className="absolute bottom-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <Button
+              size="sm"
+              variant="secondary"
+              className="h-8 w-8 p-0 bg-white/90 backdrop-blur-sm"
+            >
+              <Heart className="h-3 w-3" />
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              className="h-8 w-8 p-0 bg-white/90 backdrop-blur-sm"
+            >
+              <Share2 className="h-3 w-3" />
+            </Button>
           </div>
         </div>
 
-        <h3 className="font-semibold mb-2 text-sm line-clamp-2 group-hover:text-brand-600 transition-colors">
-          {auction.title}
-        </h3>
+        <CardContent className="p-4">
+          <div className="flex items-start justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-xs">
+                {auction.category}
+              </Badge>
+              {auction.verified && (
+                <Badge variant="outline" className="text-xs text-green-600 border-green-200">
+                  <CheckCircle className="h-3 w-3 mr-1" />
+                  Verified
+                </Badge>
+              )}
+            </div>
+            <div className="flex items-center gap-1 text-xs text-gray-500">
+              <Eye className="h-3 w-3" />
+              {auction.views}
+            </div>
+          </div>
 
-        <div className="flex items-center gap-1 mb-3 text-xs text-gray-600">
-          <MapPin className="h-3 w-3" />
-          {auction.location}
-        </div>
+          <h3 className="font-semibold mb-2 text-sm line-clamp-2 group-hover:text-brand-600 transition-colors">
+            {auction.title}
+          </h3>
 
-        {auction.auctionType === "forward" && (
-          <>
-            {(auction.seller || auction.rating) && (
-              <div className="flex items-center gap-1 mb-3">
-                <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                <span className="text-xs text-gray-600">
-                  {auction.rating} • {auction.seller}
-                </span>
-              </div>
-            )}
-            <div className="space-y-2 mb-4">
-              {auction.status === "live" && auction.currentBid !== undefined && (
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-gray-600">Current Bid</span>
-                  <span className="font-bold text-green-600">${auction.currentBid.toLocaleString()}</span>
+          <div className="flex items-center gap-1 mb-3 text-xs text-gray-600">
+            <MapPin className="h-3 w-3" />
+            {auction.location}
+          </div>
+
+          {auction.auctionType === "forward" && (
+            <>
+              {(auction.seller || auction.rating) && (
+                <div className="flex items-center gap-1 mb-3">
+                  <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                  <span className="text-xs text-gray-600">
+                    {auction.rating} • {auction.seller}
+                  </span>
                 </div>
               )}
-              {auction.status === "upcoming" && auction.startingBid !== undefined && (
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-gray-600">Starting Bid</span>
-                  <span className="font-bold text-blue-600">${auction.startingBid.toLocaleString()}</span>
-                </div>
-              )}
-              {auction.status === "live" && auction.timeLeft && (
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-gray-600">Time Left</span>
-                  <LiveTimer time={auction.timeLeft} />
-                </div>
-              )}
-              {auction.status === "upcoming" && auction.startsIn && (
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-gray-600">Starts In</span>
-                  <LiveTimer time={auction.startsIn} />
-                </div>
-              )}
-              {(auction.status === "live" || auction.status === "closed") &&
-                auction.bidders !== undefined && (
+              <div className="space-y-2 mb-4">
+                {auction.status === "live" && auction.currentBid !== undefined && (
                   <div className="flex justify-between items-center">
-                    <span className="text-xs text-gray-600">Bidders</span>
+                    <span className="text-xs text-gray-600">Current Bid</span>
+                    <span className="font-bold text-green-600">${auction.currentBid.toLocaleString()}</span>
+                  </div>
+                )}
+                {auction.status === "upcoming" && auction.startingBid !== undefined && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-600">Starting Bid</span>
+                    <span className="font-bold text-blue-600">${auction.startingBid.toLocaleString()}</span>
+                  </div>
+                )}
+                {auction.status === "live" && auction.timeLeft && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-600">Time Left</span>
+                    <LiveTimer time={auction.timeLeft} />
+                  </div>
+                )}
+                {auction.status === "upcoming" && auction.startsIn && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-600">Starts In</span>
+                    <LiveTimer time={auction.startsIn} />
+                  </div>
+                )}
+                {(auction.status === "live" || auction.status === "closed") &&
+                  auction.bidders !== undefined && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-gray-600">Bidders</span>
+                      <span className="font-semibold flex items-center gap-1">
+                        <Users className="h-3 w-3" />
+                        {auction.bidders}
+                      </span>
+                    </div>
+                  )}
+                {auction.watchers && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-600">Watching</span>
                     <span className="font-semibold flex items-center gap-1">
-                      <Users className="h-3 w-3" />
-                      {auction.bidders}
+                      <Eye className="h-3 w-3" />
+                      {auction.watchers}
                     </span>
                   </div>
                 )}
-              {auction.watchers && (
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-gray-600">Watching</span>
-                  <span className="font-semibold flex items-center gap-1">
-                    <Eye className="h-3 w-3" />
-                    {auction.watchers}
-                  </span>
-                </div>
-              )}
-            </div>
-          </>
-        )}
-
-        {auction.auctionType === "reverse" && (
-          <>
-            {auction.buyer && (
-              <div className="flex items-center gap-1 mb-3">
-                <Briefcase className="h-3 w-3 text-blue-500" />
-                <span className="text-xs text-gray-600">Buyer: {auction.buyer}</span>
               </div>
-            )}
-            <div className="space-y-2 mb-4">
-              {auction.targetPrice !== undefined && (
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-gray-600">Target Budget</span>
-                  <span className="font-bold text-blue-600">${auction.targetPrice.toLocaleString()}</span>
+            </>
+          )}
+
+          {auction.auctionType === "reverse" && (
+            <>
+              {auction.buyer && (
+                <div className="flex items-center gap-1 mb-3">
+                  <Briefcase className="h-3 w-3 text-blue-500" />
+                  <span className="text-xs text-gray-600">Buyer: {auction.buyer}</span>
                 </div>
               )}
-              {auction.status === "live" && auction.deadline && (
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-gray-600">Deadline</span>
-                  <span className="font-semibold text-red-600 flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    {auction.deadline}
-                  </span>
-                </div>
-              )}
-              {auction.proposals !== undefined && (
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-gray-600">Proposals</span>
-                  <span className="font-semibold flex items-center gap-1">
-                    <Users className="h-3 w-3" />
-                    {auction.proposals}
-                  </span>
-                </div>
-              )}
+              <div className="space-y-2 mb-4">
+                {auction.targetPrice !== undefined && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-600">Target Budget</span>
+                    <span className="font-bold text-blue-600">${auction.targetPrice.toLocaleString()}</span>
+                  </div>
+                )}
+                {auction.status === "live" && auction.deadline && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-600">Deadline</span>
+                    <span className="font-semibold text-red-600 flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {auction.deadline}
+                    </span>
+                  </div>
+                )}
+                {auction.proposals !== undefined && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-600">Proposals</span>
+                    <span className="font-semibold flex items-center gap-1">
+                      <Users className="h-3 w-3" />
+                      {auction.proposals}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {auction.status === "closed" && auction.winner && (
+            <div className="flex justify-between items-center text-xs mb-4 p-2 bg-green-50 rounded">
+              <span className="text-gray-600">Winner</span>
+              <span className="font-semibold text-green-600">{auction.winner}</span>
             </div>
-          </>
-        )}
+          )}
 
-        {auction.status === "closed" && auction.winner && (
-          <div className="flex justify-between items-center text-xs mb-4 p-2 bg-green-50 rounded">
-            <span className="text-gray-600">Winner</span>
-            <span className="font-semibold text-green-600">{auction.winner}</span>
-          </div>
-        )}
-
-        <Button
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white border border-blue-700 shadow-sm transition-all duration-300"
-          size="sm"
-          asChild
-        >
-          <Link href={`/auctions/${auction.id}`}>
-            {auction.status === "closed"
-              ? "View Details"
-              : auction.auctionType === "forward"
-              ? "Place Bid"
-              : "Submit Proposal"}
-          </Link>
-        </Button>
-      </CardContent>
-    </Card>
-  );
+          <Button
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white border border-blue-700 shadow-sm transition-all duration-300"
+            size="sm"
+            asChild
+          >
+            <Link href={`/auctions/${auction.id}`}>
+              {auction.status === "closed"
+                ? "View Details"
+                : auction.auctionType === "forward"
+                ? "Place Bid"
+                : "Submit Proposal"}
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  };
 
   return (
     <div className="min-h-screen py-20 bg-gradient-to-br from-gray-50 to-gray-100">
