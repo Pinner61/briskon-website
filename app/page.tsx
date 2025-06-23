@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle,CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ArrowRight,
   Globe,
+  Gavel,
+  Megaphone,
   Shield,
   TrendingUp,
   Clock,
@@ -23,6 +25,7 @@ import {
   Lock,
   Cpu,
   Code,
+  FileText,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -52,74 +55,135 @@ export default function HomePage() {
     { icon: <Shield className="h-6 w-6" />, number: "99.99%", label: "Uptime Guarantee" },
   ];
 
-  const platformFeatures = [
-    {
-      icon: <TrendingUp className="h-6 w-6 text-blue-600" />,
-      title: "AI-Powered Bidding",
-      description: "Intelligent bidding algorithms that maximize your ROI.",
-    },
-    {
-      icon: <LineChart className="h-6 w-6 text-green-600" />,
-      title: "Real-Time Analytics",
-      description: "Comprehensive dashboards and reporting for data-driven decisions.",
-    },
-    {
-      icon: <Layers className="h-6 w-6 text-purple-600" />,
-      title: "Multi-Format Support",
-      description: "Supports English, Dutch, Sealed Bid, and Reverse Auctions.",
-    },
-    {
-      icon: <Lock className="h-6 w-6 text-orange-600" />,
-      title: "Enterprise Security",
-      description: "End-to-end encryption and multi-factor authentication.",
-    },
-    {
-      icon: <Cpu className="h-6 w-6 text-red-600" />,
-      title: "Scalable Infrastructure",
-      description: "Handles millions of transactions with ease.",
-    },
-    {
-      icon: <Settings className="h-6 w-6 text-gray-600" />,
-      title: "Customizable Platform",
-      description: "White-label options and API integrations.",
-    },
-  ];
+const platformFeatures = [
+  {
+    icon: <TrendingUp className="h-6 w-6 text-blue-600" />,
+    title: "AI-Powered Bidding",
+    description: "Intelligent bidding algorithms that maximize your ROI.",
+  },
+  {
+    icon: <LineChart className="h-6 w-6 text-green-600" />,
+    title: "Real-Time Analytics",
+    description: "Comprehensive dashboards and reporting for data-driven decisions.",
+  },
+  {
+    icon: <Layers className="h-6 w-6 text-purple-600" />,
+    title: "Multi-Format Support",
+    description: "Supports English, Dutch, Sealed Bid, and Reverse Auctions.",
+  },
+  {
+    icon: <Lock className="h-6 w-6 text-orange-600" />,
+    title: "Enterprise Security",
+    description: "End-to-end encryption and multi-factor authentication.",
+  },
+  {
+    icon: <Cpu className="h-6 w-6 text-red-600" />,
+    title: "Scalable Infrastructure",
+    description: "Handles millions of transactions with ease.",
+  },
+  {
+    icon: <Settings className="h-6 w-6 text-gray-600" />,
+    title: "Customizable Platform",
+    description: "White-label options and API integrations.",
+  },
+  {
+    icon: <BarChart3 className="h-6 w-6 text-yellow-600" />,
+    title: "Advanced Dashboards",
+    description: "Visualize key performance metrics with rich, interactive charts.",
+  },
+  {
+    icon: <FileText className="h-6 w-6 text-indigo-600" />,
+    title: "Content Management System",
+    description: "Easily manage pages, listings, and user-generated content.",
+  },
+  {
+    icon: <Globe className="h-6 w-6 text-pink-600" />,
+    title: "Private Branding & Custom Links",
+    description: "Custom domains, branded emails, and user-specific landing pages.",
+  },
+];
+const platformBenefits = [
+  {
+    icon: <TrendingUp className="h-6 w-6 text-blue-600" />,
+    title: "Increased Revenue",
+    description: "Maximize your earnings with intelligent bidding and real-time insights.",
+  },
+  {
+    icon: <Users className="h-6 w-6 text-green-600" />,
+    title: "Improved Efficiency",
+    description: "Automate key processes and reduce manual effort.",
+  },
+  {
+    icon: <Shield className="h-6 w-6 text-purple-600" />,
+    title: "Enhanced Security",
+    description: "Protect your data and transactions with enterprise-grade security.",
+  },
+  {
+    icon: <Globe className="h-6 w-6 text-orange-600" />,
+    title: "Global Reach",
+    description: "Expand your market and reach new customers worldwide.",
+  },
+  {
+    icon: <Gavel className="h-6 w-6 text-red-600" />,
+    title: "Competitive Auctions",
+    description: "Drive higher bids with dynamic auction formats and real-time participation.",
+  },
+  {
+    icon: <Megaphone className="h-6 w-6 text-cyan-600" />,
+    title: "Marketing Support",
+    description: "Boost visibility with integrated marketing tools and outreach strategies.",
+  },
+];
 
-  const platformBenefits = [
-    {
-      icon: <TrendingUp className="h-6 w-6 text-blue-600" />,
-      title: "Increased Revenue",
-      description: "Maximize your earnings with intelligent bidding and real-time insights.",
-    },
-    {
-      icon: <Users className="h-6 w-6 text-green-600" />,
-      title: "Improved Efficiency",
-      description: "Automate key processes and reduce manual effort.",
-    },
-    {
-      icon: <Shield className="h-6 w-6 text-purple-600" />,
-      title: "Enhanced Security",
-      description: "Protect your data and transactions with enterprise-grade security.",
-    },
-    {
-      icon: <Globe className="h-6 w-6 text-orange-600" />,
-      title: "Global Reach",
-      description: "Expand your market and reach new customers worldwide.",
-    },
-  ];
 
-  const useCases = [
-    {
-      image: "/images/use-case-asset-disposal.jpg",
-      title: "Asset Disposal",
-      description: "Efficiently liquidate surplus assets and maximize recovery value.",
-    },
-    {
-      image: "/images/use-case-procurement.jpg",
-      title: "Strategic Procurement",
-      description: "Drive down costs and improve supplier relationships with reverse auctions.",
-    },
-  ];
+const useCases = [
+  {
+    image: "/images/use-case-arts.webp",
+    title: "Arts, Antiques & Collectibles",
+    description: "Auction unique and rare pieces to a global audience of collectors.",
+  },
+  {
+    image: "/images/use-case-real-estate.webp",
+    title: "Real Estate & Property",
+    description: "Sell residential, commercial, or land properties with transparent bidding.",
+  },
+  {
+    image: "/images/use-case-automotive.webp",
+    title: "Automotive & Vehicles",
+    description: "Streamline sales of cars, trucks, fleets, and specialty vehicles.",
+  },
+  {
+    image: "/images/use-case-construction.webp",
+    title: "Construction & Industrial Equipment",
+    description: "Auction heavy machinery, tools, and surplus equipment efficiently.",
+  },
+  {
+    image: "/images/use-case-procurement.webp",
+    title: "Procurement & B2B Reverse Auctions",
+    description: "Reduce costs and optimize sourcing through competitive reverse auctions.",
+  },
+  {
+    image: "/images/use-case-retail.webp",
+    title: "Retail Liquidation & Excess Inventory",
+    description: "Quickly offload overstock and returned goods across multiple categories.",
+  },
+  {
+    image: "/images/use-case-government.webp",
+    title: "Government & Municipal Surplus",
+    description: "Dispose of public assets with transparency and compliance.",
+  },
+  {
+    image: "/images/use-case-jewelry.webp",
+    title: "Jewelry & Luxury Goods",
+    description: "Sell high-value items like watches, gems, and designer goods securely.",
+  },
+  {
+    image: "/images/use-case-tech.webp",
+    title: "Technology & Electronics",
+    description: "Liquidate IT assets, electronics, and gadgets with certified audits.",
+  },
+];
+
 
   const FloatingOrb = ({
     size,
@@ -226,7 +290,7 @@ export default function HomePage() {
             <div className="grid lg:grid-cols-2 gap-12 items-center">
               <div className="space-y-8">
                 <div className="space-y-6">
-                  <Badge className="bg-blue-100 text-blue-700 border-blue-200 animate-pulse-glow inline-flex items-center gap-2 hover-lift">
+                  <Badge className="bg-blue-100 text-blue-700 border border-blue-200 animate-pulse-glow inline-flex items-center gap-2 transition-transform hover:-translate-y-0.5 hover:bg-blue-100 hover:text-blue-700 hover:border-blue-200">
                     <Sparkles className="h-4 w-4 animate-bounce-gentle" />
                     Powering Auction Intelligence Since 2005
                   </Badge>
@@ -311,7 +375,7 @@ export default function HomePage() {
         <div className="relative container mx-auto px-4">
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-16">
-              <Badge className="mb-4 bg-blue-100 text-blue-700 border-blue-200">Platform Overview</Badge>
+              <Badge className="bg-blue-100 text-blue-700 border border-blue-200 animate-pulse-glow inline-flex items-center gap-2 transition-transform hover:-translate-y-0.5 hover:bg-blue-100 hover:text-blue-700 hover:border-blue-200">Platform Overview</Badge>
               <h2 className="text-3xl md:text-5xl font-bold text-gray-900 mb-6">
                 The Complete Auction Intelligence Platform
               </h2>
@@ -324,16 +388,16 @@ export default function HomePage() {
             <Tabs defaultValue="overview" className="w-full" onValueChange={setActiveTab}>
               <div className="flex justify-center mb-8">
                 <TabsList className="bg-gray-100 backdrop-blur-sm">
-                  <TabsTrigger value="overview" className="text-sm md:text-base">
+                  <TabsTrigger value="overview" className="text-sm md:text-base hover:text-blue-600 hover:bg-white transition-colors">
                     Overview
                   </TabsTrigger>
-                  <TabsTrigger value="features" className="text-sm md:text-base">
+                  <TabsTrigger value="features" className="text-sm md:text-base hover:text-blue-600 hover:bg-white transition-colors">
                     Key Features
                   </TabsTrigger>
-                  <TabsTrigger value="benefits" className="text-sm md:text-base">
+                  <TabsTrigger value="benefits" className="text-sm md:text-base hover:text-blue-600 hover:bg-white transition-colors">
                     Benefits
                   </TabsTrigger>
-                  <TabsTrigger value="use-cases" className="text-sm md:text-base">
+                  <TabsTrigger value="use-cases" className="text-sm md:text-base hover:text-blue-600 hover:bg-white transition-colors">
                     Use Cases
                   </TabsTrigger>
                 </TabsList>
@@ -407,6 +471,16 @@ export default function HomePage() {
                     </Card>
                   ))}
                 </div>
+                <div className="mt-12 text-center">
+                  <Button
+                    className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white"
+                    asChild
+                  >
+                    <Link href="/get-started">
+                      Get Started                      <ArrowRight className="ml-2 h-5 w-5" />
+                    </Link>
+                  </Button>
+                </div>
               </TabsContent>
 
               <TabsContent value="benefits" className="mt-0">
@@ -444,13 +518,13 @@ export default function HomePage() {
               </TabsContent>
 
               <TabsContent value="use-cases" className="mt-0">
-                <div className="grid md:grid-cols-2 gap-8">
+                <div className="grid md:grid-cols-3 gap-8">
                   {useCases.map((useCase, index) => (
                     <Card
                       key={index}
-                      className="bg-white border-gray-200 backdrop-blur-sm hover:bg-gray-50 transition-all duration-300 hover:shadow-xl hover:border-gray-300 overflow-hidden"
+                      className="bg-white border border-gray-200 hover:bg-gray-50 transition-all duration-300 hover:shadow-xl hover:border-gray-300 overflow-hidden flex flex-col"
                     >
-                      <div className="h-48 relative">
+                      <div className="relative w-full h-48">
                         <Image
                           src={useCase.image || "/placeholder.svg"}
                           alt={useCase.title}
@@ -461,11 +535,22 @@ export default function HomePage() {
                       <CardHeader>
                         <CardTitle className="text-xl text-gray-900">{useCase.title}</CardTitle>
                       </CardHeader>
-                      <CardContent>
+                      <CardContent className="flex-grow">
                         <p className="text-gray-600">{useCase.description}</p>
                       </CardContent>
                     </Card>
                   ))}
+                </div>
+                <div className="mt-12 text-center">
+                  <Button
+                    className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white"
+                    asChild
+                  >
+                    <Link href="/get-started">
+                      Get Started
+                      <ArrowRight className="ml-2 h-5 w-5" />
+                    </Link>
+                  </Button>
                 </div>
               </TabsContent>
             </Tabs>
@@ -482,7 +567,7 @@ export default function HomePage() {
         <div className="relative container mx-auto px-4">
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-16">
-              <Badge className="mb-4 bg-blue-100 text-blue-700 border-blue-200">Auction Solutions</Badge>
+              <Badge className="bg-blue-100 text-blue-700 border border-blue-200 animate-pulse-glow inline-flex items-center gap-2 transition-transform hover:-translate-y-0.5 hover:bg-blue-100 hover:text-blue-700 hover:border-blue-200">Auction Solutions</Badge>
               <h2 className="text-3xl md:text-5xl font-bold text-gray-900 mb-6">Comprehensive Auction Formats</h2>
               <p className="text-xl text-gray-600 max-w-3xl mx-auto">
                 Our platform supports multiple auction types to meet your specific business needs.
@@ -552,17 +637,13 @@ export default function HomePage() {
                 </div>
 
                 <Button
+                  
                   className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white"
-                  onClick={() => {
-                    setHighlightSolutions(true);
-                    // Scroll to top to show navigation
-                    window.scrollTo({ top: 0, behavior: "smooth" });
-                    // Remove highlight after 3 seconds
-                    setTimeout(() => setHighlightSolutions(false), 3000);
-                  }}
+                  asChild
                 >
+                  <Link href="/solutions">
                   Explore All Solutions
-                  <ArrowRight className="ml-2 h-5 w-5" />
+                  </Link>
                 </Button>
               </div>
               <div className="relative w-full h-[475px]">
@@ -621,127 +702,133 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Deployment Options Section */}
-      <section
-        id="deployment-options"
-        className="py-20 bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 relative overflow-hidden"
-      >
-        <div className="absolute inset-0 bg-grid-gray-900/[0.02] bg-[size:30px_30px]" />
-        <div className="relative container mx-auto px-4">
-          <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-16">
-              <Badge className="mb-4 bg-blue-100 text-blue-700 border-blue-200">Get Started</Badge>
-              <h2 className="text-3xl md:text-5xl font-bold text-gray-900 mb-6">Flexible Deployment Options</h2>
-              <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                Choose the implementation approach that best fits your business needs.
-              </p>
+{/* Deployment Options Section */}
+<section
+  id="deployment-options"
+  className="py-20 bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 relative overflow-hidden"
+>
+  <div className="absolute inset-0 bg-grid-gray-900/[0.02] bg-[size:30px_30px]" />
+  <div className="relative container mx-auto px-4">
+    <div className="max-w-6xl mx-auto">
+      <div className="text-center mb-16">
+        <Badge className="bg-blue-100 text-blue-700 border border-blue-200 animate-pulse-glow inline-flex items-center gap-2 transition-transform hover:-translate-y-0.5 hover:bg-blue-100 hover:text-blue-700 hover:border-blue-200">Get Started</Badge>
+        <h2 className="text-3xl md:text-5xl font-bold text-gray-900 mb-6">Flexible Deployment Options</h2>
+        <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+          Choose the implementation approach that best fits your business needs.
+        </p>
+      </div>
+
+      <div className="grid md:grid-cols-3 gap-8">
+        <Card className="flex flex-col bg-white border-gray-200 hover:border-blue-300 transition-all duration-300 hover:shadow-xl hover:shadow-blue-100/50">
+          <CardHeader>
+            <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center mb-4">
+              <Settings className="h-6 w-6 text-blue-600" />
             </div>
+            <CardTitle className="text-xl text-gray-900">On-Premise Installation</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 flex-grow">
+            <p className="text-gray-600">
+              Deploy our auction platform on your own infrastructure for maximum control and security.
+            </p>
+            <ul className="space-y-2">
+              {[
+                "Complete control over data",
+                "Custom security policies",
+                "Integration with existing systems",
+                "Dedicated support team",
+              ].map((item, index) => (
+                <li key={index} className="flex items-start gap-2">
+                  <Check className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                  <span className="text-gray-600 text-sm">{item}</span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+          <CardFooter className="p-4">
+            <Button
+              variant="outline"
+              className="w-full border-blue-300 text-blue-600 hover:bg-blue-50"
+              asChild
+            >
+              <Link href="/get-started/on-premise">Learn More</Link>
+            </Button>
+          </CardFooter>
+        </Card>
 
-            <div className="grid md:grid-cols-3 gap-8">
-              <Card className="bg-white border-gray-200 hover:border-blue-300 transition-all duration-300 hover:shadow-xl hover:shadow-blue-100/50">
-                <CardHeader>
-                  <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center mb-4">
-                    <Settings className="h-6 w-6 text-blue-600" />
-                  </div>
-                  <CardTitle className="text-xl text-gray-900">On-Premise Installation</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-gray-600">
-                    Deploy our auction platform on your own infrastructure for maximum control and security.
-                  </p>
-                  <ul className="space-y-2">
-                    {[
-                      "Complete control over data",
-                      "Custom security policies",
-                      "Integration with existing systems",
-                      "Dedicated support team",
-                    ].map((item, index) => (
-                      <li key={index} className="flex items-start gap-2">
-                        <Check className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-                        <span className="text-gray-600 text-sm">{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <Button
-                    variant="outline"
-                    className="w-full mt-4 border-blue-300 text-blue-600 hover:bg-blue-50"
-                    asChild
-                  >
-                    <Link href="/get-started/on-premise">Learn More</Link>
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-white border-gray-200 hover:border-purple-300 transition-all duration-300 hover:shadow-xl hover:shadow-purple-100/50">
-                <CardHeader>
-                  <div className="w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center mb-4">
-                    <Code className="h-6 w-6 text-purple-600" />
-                  </div>
-                  <CardTitle className="text-xl text-gray-900">Custom Development</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-gray-600">
-                    Tailored solutions designed specifically for your unique business requirements.
-                  </p>
-                  <ul className="space-y-2">
-                    {[
-                      "Bespoke functionality",
-                      "Unique user experience",
-                      "Specialized integrations",
-                      "Dedicated project team",
-                    ].map((item, index) => (
-                      <li key={index} className="flex items-start gap-2">
-                        <Check className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-                        <span className="text-gray-600 text-sm">{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <Button
-                    variant="outline"
-                    className="w-full mt-4 border-purple-300 text-purple-600 hover:bg-purple-50"
-                    asChild
-                  >
-                    <Link href="/get-started/custom-development">Learn More</Link>
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-white border-gray-200 hover:border-cyan-300 transition-all duration-300 hover:shadow-xl hover:shadow-cyan-100/50">
-                <CardHeader>
-                  <div className="w-12 h-12 rounded-lg bg-cyan-100 flex items-center justify-center mb-4">
-                    <div className="w-6 h-6 bg-cyan-600 rounded text-xs flex items-center justify-center text-white font-bold">
-                      WL
-                    </div>
-                  </div>
-                  <CardTitle className="text-xl text-gray-900">White Label Solution</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-gray-600">
-                    Launch your own branded auction platform quickly with our turnkey solution.
-                  </p>
-                  <ul className="space-y-2">
-                    {["Rapid deployment", "Custom branding", "Full feature set", "Ongoing updates"].map(
-                      (item, index) => (
-                        <li key={index} className="flex items-start gap-2">
-                          <Check className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-                          <span className="text-gray-600 text-sm">{item}</span>
-                        </li>
-                      ),
-                    )}
-                  </ul>
-                  <Button
-                    variant="outline"
-                    className="w-full mt-4 border-cyan-300 text-cyan-600 hover:bg-cyan-50"
-                    asChild
-                  >
-                    <Link href="/get-started/white-label">Learn More</Link>
-                  </Button>
-                </CardContent>
-              </Card>
+        <Card className="flex flex-col bg-white border-gray-200 hover:border-purple-300 transition-all duration-300 hover:shadow-xl hover:shadow-purple-100/50">
+          <CardHeader>
+            <div className="w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center mb-4">
+              <Code className="h-6 w-6 text-purple-600" />
             </div>
-          </div>
-        </div>
-      </section>
+            <CardTitle className="text-xl text-gray-900">Custom Development</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 flex-grow">
+            <p className="text-gray-600">
+              Tailored solutions designed specifically for your unique business requirements.
+            </p>
+            <ul className="space-y-2">
+              {[
+                "Bespoke functionality",
+                "Unique user experience",
+                "Specialized integrations",
+                "Dedicated project team",
+              ].map((item, index) => (
+                <li key={index} className="flex items-start gap-2">
+                  <Check className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                  <span className="text-gray-600 text-sm">{item}</span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+          <CardFooter className="p-4">
+            <Button
+              variant="outline"
+              className="w-full border-purple-300 text-purple-600 hover:bg-purple-50"
+              asChild
+            >
+              <Link href="/get-started/custom-development">Learn More</Link>
+            </Button>
+          </CardFooter>
+        </Card>
+
+        <Card className="flex flex-col bg-white border-gray-200 hover:border-cyan-300 transition-all duration-300 hover:shadow-xl hover:shadow-cyan-100/50">
+          <CardHeader>
+            <div className="w-12 h-12 rounded-lg bg-cyan-100 flex items-center justify-center mb-4">
+              <div className="w-6 h-6 bg-cyan-600 rounded text-xs flex items-center justify-center text-white font-bold">
+                WL
+              </div>
+            </div>
+            <CardTitle className="text-xl text-gray-900">White Label Solution</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 flex-grow">
+            <p className="text-gray-600">
+              Launch your own branded auction platform quickly with our turnkey solution.
+            </p>
+            <ul className="space-y-2">
+              {["Rapid deployment", "Custom branding", "Full feature set", "Ongoing updates"].map(
+                (item, index) => (
+                  <li key={index} className="flex items-start gap-2">
+                    <Check className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                    <span className="text-gray-600 text-sm">{item}</span>
+                  </li>
+                ),
+              )}
+            </ul>
+          </CardContent>
+          <CardFooter className="p-4">
+            <Button
+              variant="outline"
+              className="w-full border-cyan-300 text-cyan-600 hover:bg-cyan-50"
+              asChild
+            >
+              <Link href="/get-started/white-label">Learn More</Link>
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
+    </div>
+  </div>
+</section>
 
       {/* Enhanced CTA Section */}
       <section className="py-20 bg-[#1db0e5] text-white relative overflow-hidden">
