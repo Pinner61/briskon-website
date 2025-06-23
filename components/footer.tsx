@@ -1,17 +1,34 @@
-import Link from "next/link"
-import Image from "next/image"
-import { MapPin, Phone, Mail, Facebook, Instagram, Linkedin, Youtube } from "lucide-react"
-import { Twitter } from "lucide-react"
+import Link from "next/link";
+import Image from "next/image";
+import { MapPin, Phone, Mail, Facebook, Instagram, Twitter, Linkedin, Youtube } from "lucide-react";
 
 export function Footer() {
   return (
     <footer className="bg-white border-t border-gray-200">
-      <div className="container mx-auto px-4 py-12">
+      <div className="container mx-auto px-4">
+        {/* Slogan Section */}
+<div className="py-4">
+  <p className="text-lg text-left" style={{ wordSpacing: "5px" }}>
+    <span className="font-bold text-black">Transforming</span>{" "}
+    <span className="text-black">the world of</span>{" "}
+    <strong className="text-blue-900">auctions</strong>{" "}
+    <span className="text-black">with</span>{" "}
+    <strong className="text-blue-900">technology</strong>
+  </p>
+</div>
+
+
         {/* Logo and Contact Information */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 mb-8">
           <div className="lg:col-span-1">
             <Link href="/" className="inline-block mb-6">
-              <Image src="/images/briskon-auction-vertical-logo-white.png" alt="Briskon Auction" width={150} height={40} className="h-auto" />
+              <Image
+                src="/images/briskon-auction-vertical-logo-white.png"
+                alt="Briskon Auction"
+                width={150}
+                height={40}
+                className="h-auto"
+              />
             </Link>
 
             <div className="space-y-3 text-sm text-gray-600">
@@ -85,10 +102,7 @@ export function Footer() {
                   </Link>
                 </li>
                 <li>
-                  <Link
-                    href="/platform/ai-capabilities"
-                    className="text-gray-600 hover:text-blue-600 transition-colors"
-                  >
+                  <Link href="/platform/ai-capabilities" className="text-gray-600 hover:text-blue-600 transition-colors">
                     AI Capabilities
                   </Link>
                 </li>
@@ -105,18 +119,12 @@ export function Footer() {
               <h3 className="font-semibold text-gray-900 mb-4">Solutions</h3>
               <ul className="space-y-2">
                 <li>
-                  <Link
-                    href="/solutions/forward-auction"
-                    className="text-gray-600 hover:text-blue-600 transition-colors"
-                  >
+                  <Link href="/solutions/forward-auction" className="text-gray-600 hover:text-blue-600 transition-colors">
                     Forward Auction
                   </Link>
                 </li>
                 <li>
-                  <Link
-                    href="/solutions/reverse-auction"
-                    className="text-gray-600 hover:text-blue-600 transition-colors"
-                  >
+                  <Link href="/solutions/reverse-auction" className="text-gray-600 hover:text-blue-600 transition-colors">
                     Reverse Auction
                   </Link>
                 </li>
@@ -180,30 +188,30 @@ export function Footer() {
         </div>
 
         {/* Social and Copyright */}
-        <div className="pt-8 border-t border-gray-200 flex flex-col md:flex-row justify-between items-center">
+        <div className="border-t border-gray-200 flex flex-col md:flex-row justify-between items-center py-6">
           <p className="text-sm text-gray-500 mb-4 md:mb-0">© 2025 Briskon Auction. All rights reserved</p>
 
           <div>
             <h3 className="font-semibold text-gray-900 mb-3 text-center md:text-right">Social</h3>
             <div className="flex space-x-4">
               <Link href="#" className="text-gray-500 hover:text-blue-600 transition-colors">
-                <Facebook className="w-5 h-5" />
+                <Facebook className="w-5 h-5" style={{ color: "#1E40AF" }} />
                 <span className="sr-only">Facebook</span>
               </Link>
               <Link href="#" className="text-gray-500 hover:text-blue-600 transition-colors">
-                <Instagram className="w-5 h-5" />
+                <Instagram className="w-5 h-5" style={{ color: "#000000" }} />
                 <span className="sr-only">Instagram</span>
               </Link>
               <Link href="#" className="text-gray-500 hover:text-blue-600 transition-colors">
-                <Twitter className="w-5 h-5" />
+                <Twitter className="w-5 h-5" style={{ color: "#1E40AF" }} />
                 <span className="sr-only">Twitter</span>
               </Link>
               <Link href="#" className="text-gray-500 hover:text-blue-600 transition-colors">
-                <Linkedin className="w-5 h-5" />
+                <Linkedin className="w-5 h-5" style={{ color: "#000000" }} />
                 <span className="sr-only">LinkedIn</span>
               </Link>
               <Link href="#" className="text-gray-500 hover:text-blue-600 transition-colors">
-                <Youtube className="w-5 h-5" />
+                <Youtube className="w-5 h-5" style={{ color: "#1E40AF" }} />
                 <span className="sr-only">YouTube</span>
               </Link>
             </div>
@@ -211,5 +219,5 @@ export function Footer() {
         </div>
       </div>
     </footer>
-  )
+  );
 }
