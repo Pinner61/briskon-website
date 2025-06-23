@@ -1,4 +1,3 @@
-// dashboard/seller/create-listing/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -86,8 +85,8 @@ export default function CreateListingPage() {
     const files = e.target.files;
     if (!files) return;
 
-    const previews: string[] = [];
-    const urls: string[] = [];
+    const newPreviews: string[] = [];
+    const newUrls: string[] = [];
 
     for (const file of Array.from(files)) {
       if (field === "productimages" && !file.type.startsWith("image/")) {
@@ -101,7 +100,7 @@ export default function CreateListingPage() {
 
       // Generate preview URL for images
       if (field === "productimages") {
-        previews.push(URL.createObjectURL(file));
+        newPreviews.push(URL.createObjectURL(file));
       }
 
       // Upload to Supabase Storage
@@ -119,15 +118,24 @@ export default function CreateListingPage() {
       const { data: urlData } = await supabase.storage
         .from("auctions")
         .getPublicUrl(`public/${fileName}`);
-      urls.push(urlData.publicUrl);
+      newUrls.push(urlData.publicUrl);
     }
 
     if (field === "productimages") {
-      setFormData((prev) => ({ ...prev, productimages: [...prev.productimages, ...urls] }));
-      setImagePreviews((prev) => [...prev, ...previews]);
+      setFormData((prev) => ({ ...prev, productimages: [...prev.productimages, ...newUrls] }));
+      setImagePreviews((prev) => [...prev, ...newPreviews]);
     } else if (field === "productdocuments") {
-      setFormData((prev) => ({ ...prev, productdocuments: [...prev.productdocuments, ...urls] }));
+      setFormData((prev) => ({ ...prev, productdocuments: [...prev.productdocuments, ...newUrls] }));
     }
+  };
+
+  // Remove an image preview and its corresponding URL
+  const removeImage = (index: number) => {
+    setImagePreviews((prev) => prev.filter((_, i) => i !== index));
+    setFormData((prev) => ({
+      ...prev,
+      productimages: prev.productimages.filter((_, i) => i !== index),
+    }));
   };
 
   // Custom parser for key-value pair text to JSON
@@ -311,16 +319,27 @@ export default function CreateListingPage() {
                       onChange={(e) => handleFileChange(e, "productimages")}
                       className="w-full p-2 border rounded mt-1"
                     />
-                    <div className="flex gap-2 mt-2">
-                      {imagePreviews.map((preview, index) => (
-                        <img
-                          key={index}
-                          src={preview}
-                          alt="Preview"
-                          className="w-16 h-16 object-cover rounded"
-                        />
-                      ))}
-                    </div>
+                    {/* Image Preview Gallery */}
+                    {imagePreviews.length > 0 && (
+                      <div className="flex gap-2 mt-2 overflow-x-auto max-w-full">
+                        {imagePreviews.map((preview, index) => (
+                          <div key={index} className="relative">
+                            <img
+                              src={preview}
+                              alt="Preview"
+                              className="w-16 h-16 object-cover rounded"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeImage(index)}
+                              className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Product Documents</label>
