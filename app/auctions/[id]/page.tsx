@@ -71,6 +71,7 @@ export default function AuctionDetailPage() {
   const [auction, setAuction] = useState<Auction | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const { isAuthenticated, user } = useAuth();
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
@@ -200,6 +201,18 @@ export default function AuctionDetailPage() {
     );
   };
 
+  const handlePrevImage = () => {
+    setCurrentImageIndex((prev) =>
+      prev === 0 ? (auction?.productimages?.length || 1) - 1 : prev - 1
+    );
+  };
+
+  const handleNextImage = () => {
+    setCurrentImageIndex((prev) =>
+      prev === (auction?.productimages?.length || 1) - 1 ? 0 : prev + 1
+    );
+  };
+
   if (loading) return <div className="text-center py-20">Loading...</div>;
   if (error) return <div className="text-center py-20 text-red-600">{error}</div>;
   if (!auction) return <div className="text-center py-20">Auction not found</div>;
@@ -215,14 +228,31 @@ export default function AuctionDetailPage() {
           <div className="lg:col-span-2 space-y-6">
             {/* Image Gallery */}
             <Card className="hover-lift transition-smooth">
-              <CardContent className="p-0">
+              <CardContent className="p-0 relative">
                 <Image
-                  src={auction.productimages?.[0] || "/placeholder.svg"}
+                  src={auction.productimages?.[currentImageIndex] || "/placeholder.svg"}
                   alt={auction.productname || auction.title || "Auction Item"}
                   width={600}
                   height={400}
                   className="w-full h-96 object-cover rounded-t-lg transition-smooth hover:scale-105"
                 />
+                {/* Image Count */}
+                <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                  {`${currentImageIndex + 1}/${auction.productimages?.length || 1}`}
+                </div>
+                {/* Navigation Arrows */}
+                <button
+                  onClick={handlePrevImage}
+                  className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-smooth"
+                >
+                  ←
+                </button>
+                <button
+                  onClick={handleNextImage}
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-smooth"
+                >
+                  →
+                </button>
                 <div className="p-4">
                   <div className="flex gap-2">
                     {auction.productimages?.map((image: string, index: number) => (
@@ -233,6 +263,7 @@ export default function AuctionDetailPage() {
                         width={100}
                         height={80}
                         className="w-20 h-16 object-cover rounded cursor-pointer border-2 border-transparent hover:border-blue-500 transition-smooth hover-lift"
+                        onClick={() => setCurrentImageIndex(index)}
                       />
                     ))}
                   </div>
