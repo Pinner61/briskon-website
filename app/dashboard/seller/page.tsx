@@ -49,7 +49,7 @@ export default function SellerDashboard() {
             </div>
             <div className="flex gap-2">
               <Button asChild>
-                <Link href="/dashboard/seller/create-listing">
+                <Link href="https://auction-wizard.onrender.com/">
                   <Plus className="h-4 w-4 mr-2" /> Create New Listing
                 </Link>
               </Button>
