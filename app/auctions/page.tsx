@@ -494,11 +494,7 @@ export default function AuctionsPage() {
             asChild
           >
             <Link href={`/auctions/${auction.id}`}>
-              {auction.status === "closed"
-                ? "View Details"
-                : auction.auctionType === "forward"
-                ? "Place Bid"
-                : "Submit Proposal"}
+              {auction.status === "live" ? "Place Bid" : "View Auction"}
             </Link>
           </Button>
         </CardContent>
