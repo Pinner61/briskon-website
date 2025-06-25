@@ -1,709 +1,782 @@
 "use client";
 
-import type React from "react";
-import { useState, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Eye,
-  EyeOff,
-  Lock,
-  Mail,
-  User,
-  Building,
-  Phone,
+  Clock,
+  Users,
+  Search,
+  Star,
+  Calendar,
+  CheckCircle,
   MapPin,
   Briefcase,
-  ShoppingBag,
-  Shield,
-  UserPlus,
-  Sparkles,
+  TrendingUp,
+  TrendingDown,
+  Filter,
+  Grid3X3,
+  List,
+  SortAsc,
+  Eye,
+  Heart,
+  Share2,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useSearchParams } from "next/navigation";
-import { useAuth } from "@/hooks/use-auth";
 
-export default function RegisterPage() {
-  const { register, isLoading: authLoading, isAuthenticated, user } = useAuth();
-  const router = useRouter();
-  const searchParams = useSearchParams();
+type AuctionItem = {
+  id: string;
+  title: string;
+  category: string;
+  image: string; // First URL from productimages or placeholder
+  auctionType: "forward" | "reverse";
+  status: "live" | "upcoming" | "closed";
+  location: string;
+  featured?: boolean;
+  verified?: boolean;
+  currentBid?: number;
+  timeLeft?: string;
+  bidders?: number;
+  seller?: string;
+  rating?: number;
+  targetPrice?: number;
+  deadline?: string;
+  proposals?: number;
+  buyer?: string;
+  startingBid?: number;
+  startsIn?: string;
+  finalBid?: number;
+  endedAgo?: string;
+  winner?: string;
+  views?: number;
+  watchers?: number;
+  productimages?: string[]; // Array of Supabase Storage URLs
+  productdocuments?: string[]; // Array of Supabase Storage URLs
+  createdat?: string; // Added for sorting consistency
+};
 
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+const categories = [
+  { value: "all", label: "All Categories" },
+  { value: "electronics", label: "Electronics" },
+  { value: "fashion", label: "Fashion" },
+  { value: "watches", label: "Watches" },
+  { value: "collectibles", label: "Collectibles" },
+  { value: "automotive", label: "Automotive" },
+  { value: "services", label: "Services" },
+  { value: "office-supplies", label: "Office Supplies" },
+  { value: "technology", label: "Technology" },
+];
 
-  const [formData, setFormData] = useState({
-    accountType: "buyer", // Default to 'buyer'
-    sellerType: "individual", // Default to 'individual' for seller/both
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-    password: "",
-    confirmPassword: "",
-    organizationName: "", // New field for organization
-    organizationContact: "", // New field for organization contact
-    location: "",
-    agreeToTerms: false,
-    subscribeNewsletter: false,
-  });
+const locations = [
+  { value: "all", label: "All Locations" },
+  { value: "New York, USA", label: "New York, USA" },
+  { value: "London, UK", label: "London, UK" },
+  { value: "Paris, France", label: "Paris, France" },
+  { value: "San Francisco, USA", label: "San Francisco, USA" },
+  { value: "Chicago, USA", label: "Chicago, USA" },
+  { value: "Detroit, USA", label: "Detroit, USA" },
+  { value: "Austin, USA", label: "Austin, USA" },
+  { value: "Seattle, USA", label: "Seattle, USA" },
+  { value: "Bordeaux, France", label: "Bordeaux, France" },
+];
+
+const auctionTypes = [
+  { value: "all", label: "All Types" },
+  { value: "forward", label: "Forward Auctions" },
+  { value: "reverse", label: "Reverse Auctions" },
+];
+
+function LiveTimer({ time }: { time: string }) {
+  const [timeLeft, setTimeLeft] = useState("");
 
   useEffect(() => {
-    const typeParam = searchParams.get("type");
-    if (typeParam && ["buyer", "seller", "both"].includes(typeParam)) {
-      setFormData((prev) => ({ ...prev, accountType: typeParam }));
+    function update() {
+      const end = new Date(time);
+      const now = new Date();
+      const diff = Math.max(0, end.getTime() - now.getTime());
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+      setTimeLeft(
+        `${hours > 0 ? hours + "h " : ""}${minutes}m ${seconds}s`
+      );
     }
-  }, [searchParams]);
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, [time]);
+
+  return (
+    <span className="font-semibold text-green-600 flex items-center gap-1">
+      <Clock className="h-3 w-3" />
+      {timeLeft}
+    </span>
+  );
+}
+
+export default function AuctionsPage() {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedLocation, setSelectedLocation] = useState("all");
+  const [selectedAuctionType, setSelectedAuctionType] = useState("all");
+  const [sortBy, setSortBy] = useState("ending-soon");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [showFilters, setShowFilters] = useState(false);
+  const [allAuctionItems, setAllAuctionItems] = useState<AuctionItem[]>([]);
 
   useEffect(() => {
-    if (isAuthenticated && user) {
-      // Redirect based on user role
-      switch (user.role) {
-        case "buyer":
-          router.push("/auctions");
-          break;
-        case "seller":
-          router.push("/dashboard/seller");
-          break;
-        case "both":
-          router.push("/dashboard");
-          break;
-        default:
-          router.push("/");
-      }
-    }
+    const fetchAuctions = async () => {
+      try {
+        const res = await fetch("/api/auctions");
+        const json = await res.json();
+        if (!json.success) return;
 
-    const handleMouseMove = (e: MouseEvent) => {
-      setMousePosition({ x: e.clientX, y: e.clientY });
-    };
+        const mapped: AuctionItem[] = (json.data || []).map((a: any) => {
+          // Calculate start and end times
+          const start = a.scheduledstart ? new Date(a.scheduledstart) : null;
+          const duration = a.auctionduration
+            ? ((durationObj) => (
+              ((durationObj.days || 0) * 24 * 60 * 60) +
+              ((durationObj.hours || 0) * 60 * 60) +
+              ((durationObj.minutes || 0) * 60)
+            ))(a.auctionduration)
+            : 0;
+          const end = start ? new Date(start.getTime() + duration * 1000) : null;
+          const now = new Date();
 
-    window.addEventListener("mousemove", handleMouseMove);
-    return () => window.removeEventListener("mousemove", handleMouseMove);
-  }, [isAuthenticated, user, router]);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }));
-    setError("");
-    setSuccessMessage("");
-  };
-
-  const handleSelectChange = (name: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    setError("");
-    setSuccessMessage("");
-  };
-
-  const handleRadioChange = (value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      accountType: value,
-      sellerType: value === "buyer" ? "individual" : prev.sellerType,
-    }));
-    setError("");
-    setSuccessMessage("");
-  };
-
-  const handleSellerTypeChange = (value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      sellerType: value,
-      organizationName: value === "organization" ? prev.organizationName : "",
-      organizationContact: value === "organization" ? prev.organizationContact : "",
-    }));
-    setError("");
-    setSuccessMessage("");
-  };
-
-  const handleCheckboxChange = (name: string, checked: boolean) => {
-    setFormData((prev) => ({
-      ...prev,
-      [name]: checked,
-    }));
-    setError("");
-    setSuccessMessage("");
-  };
-
-  const validatePassword = (password: string) => {
-    if (password.length < 8) return "Password must be at least 8 characters long.";
-    if (!/[a-z]/.test(password)) return "Password must contain a lowercase letter.";
-    if (!/[A-Z]/.test(password)) return "Password must contain an uppercase letter.";
-    if (!/\d/.test(password)) return "Password must contain a number.";
-    return "";
-  };
-
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setSuccessMessage("");
-
-    if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match.");
-      return;
-    }
-
-    const passwordError = validatePassword(formData.password);
-    if (passwordError) {
-      setError(passwordError);
-      return;
-    }
-
-    if (!formData.agreeToTerms) {
-      setError("You must agree to the Terms of Service and Privacy Policy.");
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const response = await fetch("/api/profiles", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-          fname: formData.firstName,
-          lname: formData.lastName,
-          location: formData.location,
-          role: formData.accountType,
-          type: (formData.accountType === "seller" || formData.accountType === "both") ? formData.sellerType : undefined,
-          organizationName: formData.sellerType === "organization" ? formData.organizationName : undefined,
-          organizationContact: formData.sellerType === "organization" ? formData.organizationContact : undefined,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setSuccessMessage(
-          `Account created successfully! Welcome, ${formData.firstName}. Redirecting to your dashboard...`,
-        );
-        setTimeout(() => {
-          switch (formData.accountType) {
-            case "buyer":
-              router.push("/auctions");
-              break;
-            case "seller":
-              router.push("/dashboard/seller");
-              break;
-            case "both":
-              router.push("/dashboard");
-              break;
-            default:
-              router.push("/");
+          let status: "live" | "upcoming" | "closed" = "upcoming";
+          if (start && end) {
+            if (now < start) status = "upcoming";
+            else if (now >= start && now < end) status = "live";
+            else if (now >= end) status = "closed";
           }
-        }, 2000);
-      } else {
-        setError(data.error || "Registration failed. Please try again.");
+
+          return {
+            id: a.id,
+            title: a.productname || a.title || "Untitled Auction",
+            category: a.categoryid || "",
+            image: Array.isArray(a.productimages) && a.productimages.length > 0
+              ? a.productimages[0] // Use first URL from productimages
+              : "/placeholder.svg",
+            auctionType: a.auctiontype,
+            status,
+            location: a.location || "",
+            scheduledStart: a.scheduledstart || "",
+            auctionDuration: a.auctionduration || "",
+            featured: a.featured || false,
+            verified: a.verified || false,
+            currentBid: a.currentbid ?? undefined,
+            timeLeft: end && status === "live" ? end.toISOString() : "",
+            bidders: a.bidcount ?? undefined,
+            seller: a.createdby || "",
+            rating: a.rating ?? undefined,
+            targetPrice: a.targetprice ?? undefined,
+            deadline: "", // You can calculate this if you have end time
+            proposals: a.proposals ?? undefined,
+            buyer: a.buyer || "",
+            startingBid: a.startprice ?? undefined,
+            startsIn: start && status === "upcoming" ? start.toISOString() : "",
+            finalBid: a.finalbid ?? undefined,
+            endedAgo: "", // You can calculate this if you have end time
+            winner: a.winner || "",
+            views: a.views ?? undefined,
+            watchers: a.watchers ?? undefined,
+            productimages: a.productimages || [], // Array of Supabase Storage URLs
+            productdocuments: a.productdocuments || [], // Array of Supabase Storage URLs
+            createdat: a.createdat || "", // For sorting if needed
+          };
+        });
+        setAllAuctionItems(mapped);
+      } catch (error) {
+        console.error("Failed to fetch auctions:", error);
       }
-    } catch (error) {
-      setError("An error occurred during registration. Please try again.");
-    } finally {
-      setIsLoading(false);
+    };
+    fetchAuctions();
+  }, []);
+
+  const filterAndSortAuctions = (status: "live" | "upcoming" | "closed") => {
+    let items = allAuctionItems.filter((item) => item.status === status);
+
+    if (searchTerm) {
+      items = items.filter((item) =>
+        item.title.toLowerCase().includes(searchTerm.toLowerCase())
+      );
     }
+    if (selectedCategory !== "all") {
+      items = items.filter(
+        (item) => item.category.toLowerCase().replace(/\s+/g, "-") === selectedCategory
+      );
+    }
+    if (selectedLocation !== "all") {
+      items = items.filter((item) => item.location === selectedLocation);
+    }
+    if (selectedAuctionType !== "all") {
+      items = items.filter((item) => item.auctionType === selectedAuctionType);
+    }
+
+    // Sorting logic
+    if (status === "live") {
+      if (sortBy === "ending-soon") {
+        items.sort((a, b) =>
+          a.timeLeft && b.timeLeft ? a.timeLeft.localeCompare(b.timeLeft) : 0
+        );
+      } else if (sortBy === "price-high") {
+        items.sort(
+          (a, b) =>
+            (b.currentBid || b.targetPrice || 0) - (a.currentBid || a.targetPrice || 0)
+        );
+      } else if (sortBy === "price-low") {
+        items.sort(
+          (a, b) =>
+            (a.currentBid || a.targetPrice || 0) - (b.currentBid || b.targetPrice || 0)
+        );
+      } else if (sortBy === "most-bids") {
+        items.sort(
+          (a, b) => (b.bidders || b.proposals || 0) - (a.bidders || a.proposals || 0)
+        );
+      } else if (sortBy === "most-watched") {
+        items.sort((a, b) => (b.watchers || 0) - (a.watchers || 0));
+      } else if (sortBy === "newest") {
+        items.sort((a, b) =>
+          a.createdat && b.createdat ? b.createdat.localeCompare(a.createdat) : 0
+        );
+      }
+    }
+
+    return items;
   };
 
-  const FloatingOrb = ({ size, color, position, delay }: { size: string; color: string; position: string; delay: number }) => (
-    <div
-      className={`absolute ${position} ${size} ${color} rounded-full blur-xl animate-pulse`}
-      style={{ animationDelay: `${delay}ms` }}
-    />
+  const liveAuctions = useMemo(
+    () => filterAndSortAuctions("live"),
+    [searchTerm, selectedCategory, selectedLocation, selectedAuctionType, sortBy, allAuctionItems]
+  );
+  const upcomingAuctions = useMemo(
+    () => filterAndSortAuctions("upcoming"),
+    [searchTerm, selectedCategory, selectedLocation, selectedAuctionType, sortBy, allAuctionItems]
+  );
+  const closedAuctions = useMemo(
+    () => filterAndSortAuctions("closed"),
+    [searchTerm, selectedCategory, selectedLocation, selectedAuctionType, sortBy, allAuctionItems]
   );
 
-  const Floating3DShape = ({
-    className,
-    shape,
-    size,
-    color,
-  }: { className: string; shape: string; size: number; color: string }) => {
-    const shapeStyle = {
-      width: `${size}px`,
-      height: `${size}px`,
-      backgroundColor: color,
-    };
+  const AuctionCard = ({ auction }: { auction: AuctionItem }) => {
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-    let shapeElement;
-    switch (shape) {
-      case "cube":
-        shapeElement = <div className="cube" style={shapeStyle} />;
-        break;
-      case "sphere":
-        shapeElement = <div className="sphere" style={shapeStyle} />;
-        break;
-      case "pyramid":
-        shapeElement = (
-          <div
-            className="pyramid"
-            style={{
-              ...shapeStyle,
-              width: 0,
-              height: 0,
-              borderLeft: `${size / 2}px solid transparent`,
-              borderRight: `${size / 2}px solid transparent`,
-              borderBottom: `${size}px solid ${color}`,
-            }}
-          />
-        );
-        break;
-      default:
-        shapeElement = <div style={shapeStyle} />;
-    }
+    useEffect(() => {
+      if (auction.productimages && auction.productimages.length > 1) {
+        const interval = setInterval(() => {
+          setCurrentImageIndex((prev) =>
+            prev === auction.productimages!.length - 1 ? 0 : prev + 1
+          );
+        }, 5000); // Change image every 5 seconds
+        return () => clearInterval(interval);
+      }
+    }, [auction.productimages]);
+
+    const currentImage = useMemo(() => {
+      return auction.productimages && auction.productimages.length > 0
+        ? auction.productimages[currentImageIndex]
+        : auction.image || "/placeholder.svg";
+    }, [auction.productimages, currentImageIndex, auction.image]);
 
     return (
-      <div className={`absolute ${className}`} style={{ transformStyle: "preserve-3d" }}>
-        {shapeElement}
-      </div>
+      <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 group relative border border-gray-200 bg-white dark:bg-gray-800">
+        {auction.featured && (
+          <div className="absolute top-2 left-2 z-10">
+            <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold">
+              FEATURED
+            </Badge>
+          </div>
+        )}
+
+        <div className="relative">
+          <Image
+            src={currentImage}
+            alt={auction.title}
+            width={400}
+            height={300}
+            className="w-full h-48 object-cover"
+          />
+          {/* Status Badge */}
+          <div className="absolute top-2 right-2">
+            {auction.status === "live" && (
+              <Badge className="bg-green-500 text-white animate-pulse">
+                <div className="w-2 h-2 bg-white rounded-full mr-1"></div>
+                LIVE
+              </Badge>
+            )}
+            {auction.status === "upcoming" && (
+              <Badge className="bg-blue-500 text-white">
+                <Calendar className="h-3 w-3 mr-1" />
+                UPCOMING
+              </Badge>
+            )}
+            {auction.status === "closed" && (
+              <Badge className="bg-gray-500 text-white">
+                <CheckCircle className="h-3 w-3 mr-1" />
+                CLOSED
+              </Badge>
+            )}
+          </div>
+
+          {/* Auction Type Badge */}
+          <div className="absolute bottom-2 left-2">
+            <Badge
+              variant="secondary"
+              className="flex items-center gap-1 bg-white/90 backdrop-blur-sm"
+            >
+              {auction.auctionType === "forward" ? (
+                <TrendingUp className="h-3 w-3 text-green-500" />
+              ) : (
+                <TrendingDown className="h-3 w-3 text-blue-500" />
+              )}
+              {auction.auctionType === "forward" ? "Selling" : "Buying"}
+            </Badge>
+          </div>
+
+          {/* Quick Actions */}
+          <div className="absolute bottom-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <Button
+              size="sm"
+              variant="secondary"
+              className="h-8 w-8 p-0 bg-white/90 backdrop-blur-sm"
+            >
+              <Heart className="h-3 w-3" />
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              className="h-8 w-8 p-0 bg-white/90 backdrop-blur-sm"
+            >
+              <Share2 className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+
+        <CardContent className="p-4">
+          <div className="flex items-start justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-xs">
+                {auction.category}
+              </Badge>
+              {auction.verified && (
+                <Badge variant="outline" className="text-xs text-green-600 border-green-200">
+                  <CheckCircle className="h-3 w-3 mr-1" />
+                  Verified
+                </Badge>
+              )}
+            </div>
+            <div className="flex items-center gap-1 text-xs text-gray-500">
+              <Eye className="h-3 w-3" />
+              {auction.views}
+            </div>
+          </div>
+
+          <h3 className="font-semibold mb-2 text-sm line-clamp-2 group-hover:text-brand-600 transition-colors">
+            {auction.title}
+          </h3>
+
+          <div className="flex items-center gap-1 mb-3 text-xs text-gray-600">
+            <MapPin className="h-3 w-3" />
+            {auction.location}
+          </div>
+
+          {auction.auctionType === "forward" && (
+            <>
+              {(auction.seller || auction.rating) && (
+                <div className="flex items-center gap-1 mb-3">
+                  <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                  <span className="text-xs text-gray-600">
+                    {auction.rating} • {auction.seller}
+                  </span>
+                </div>
+              )}
+              <div className="space-y-2 mb-4">
+                {auction.status === "live" && auction.currentBid !== undefined && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-600">Current Bid</span>
+                    <span className="font-bold text-green-600">${auction.currentBid.toLocaleString()}</span>
+                  </div>
+                )}
+                {auction.status === "upcoming" && auction.startingBid !== undefined && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-600">Starting Bid</span>
+                    <span className="font-bold text-blue-600">${auction.startingBid.toLocaleString()}</span>
+                  </div>
+                )}
+                {auction.status === "live" && auction.timeLeft && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-600">Time Left</span>
+                    <LiveTimer time={auction.timeLeft} />
+                  </div>
+                )}
+                {auction.status === "upcoming" && auction.startsIn && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-600">Starts In</span>
+                    <LiveTimer time={auction.startsIn} />
+                  </div>
+                )}
+                {(auction.status === "live" || auction.status === "closed") &&
+                  auction.bidders !== undefined && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-gray-600">Bidders</span>
+                      <span className="font-semibold flex items-center gap-1">
+                        <Users className="h-3 w-3" />
+                        {auction.bidders}
+                      </span>
+                    </div>
+                  )}
+                {auction.watchers && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-600">Watching</span>
+                    <span className="font-semibold flex items-center gap-1">
+                      <Eye className="h-3 w-3" />
+                      {auction.watchers}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {auction.auctionType === "reverse" && (
+            <>
+              {auction.buyer && (
+                <div className="flex items-center gap-1 mb-3">
+                  <Briefcase className="h-3 w-3 text-blue-500" />
+                  <span className="text-xs text-gray-600">Buyer: {auction.buyer}</span>
+                </div>
+              )}
+              <div className="space-y-2 mb-4">
+                {auction.targetPrice !== undefined && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-600">Target Budget</span>
+                    <span className="font-bold text-blue-600">${auction.targetPrice.toLocaleString()}</span>
+                  </div>
+                )}
+                {auction.status === "live" && auction.deadline && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-600">Deadline</span>
+                    <span className="font-semibold text-red-600 flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {auction.deadline}
+                    </span>
+                  </div>
+                )}
+                {auction.proposals !== undefined && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-600">Proposals</span>
+                    <span className="font-semibold flex items-center gap-1">
+                      <Users className="h-3 w-3" />
+                      {auction.proposals}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {auction.status === "closed" && auction.winner && (
+            <div className="flex justify-between items-center text-xs mb-4 p-2 bg-green-50 rounded">
+              <span className="text-gray-600">Winner</span>
+              <span className="font-semibold text-green-600">{auction.winner}</span>
+            </div>
+          )}
+
+          <Button
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white border border-blue-700 shadow-sm transition-all duration-300"
+            size="sm"
+            asChild
+          >
+            <Link href={`/auctions/${auction.id}`}>
+              {auction.status === "live" ? "Place Bid" : "View Auction"}
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
     );
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-100 via-blue-50 to-gray-200 relative overflow-hidden">
-      {/* Interactive Background */}
-      <div
-        className="absolute inset-0 opacity-20 transition-all duration-300"
-        style={{
-          background: `radial-gradient(600px circle at ${mousePosition.x}px ${mousePosition.y}px, rgba(59, 130, 246, 0.1), transparent 40%)`,
-        }}
-      />
-      <div className="absolute inset-0 bg-grid-gray-200/[0.04] bg-[size:30px_30px]"></div>
+    <div className="min-h-screen py-20 bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="container mx-auto px-4">
+        {/* Hero Section */}
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-800 px-4 py-2 rounded-full text-sm font-medium mb-4">
+            <TrendingUp className="h-4 w-4" />
+            Live Auction Marketplace
+          </div>
+          <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+            Discover Amazing Deals
+          </h1>
+          <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
+            Join thousands of buyers and sellers in our dynamic marketplace. Find unique items, great deals, and business opportunities.
+          </p>
 
-      {/* Floating Elements */}
-      <FloatingOrb size="w-20 h-20" color="bg-blue-200/40" position="top-20 left-10" delay={0} />
-      <FloatingOrb size="w-32 h-32" color="bg-cyan-200/40" position="top-40 right-20" delay={1000} />
-      <Floating3DShape className="top-32 right-32 animate-rotate-slow" shape="cube" size={40} color="rgba(59, 130, 246, 0.15)" />
-      <Floating3DShape className="bottom-32 left-16 animate-float" shape="sphere" size={60} color="rgba(168, 85, 247, 0.15)" />
+          {/* Quick Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto mb-8">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-brand-600">{liveAuctions.length}</div>
+              <div className="text-sm text-gray-600">Live Auctions</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600">{upcomingAuctions.length}</div>
+              <div className="text-sm text-gray-600">Starting Soon</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">1,247</div>
+              <div className="text-sm text-gray-600">Active Users</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-purple-600">$2.4M</div>
+              <div className="text-sm text-gray-600">Total Volume</div>
+            </div>
+          </div>
+        </div>
 
-      <div className="relative container mx-auto px-4 py-12 md:py-20">
-        <div className="max-w-6xl mx-auto">
-          {/* Enhanced Header */}
-          <div className="text-center mb-12">
-            <Link href="/" className="inline-block group">
-              <div className="flex items-center justify-center gap-3 mb-4">
-                <div className="relative">
-                  <div className="absolute inset-0 bg-blue-200 rounded-xl blur-lg opacity-30 group-hover:opacity-50 transition-opacity"></div>
-                  <div className="relative flex items-center justify-center w-14 h-14 bg-gradient-to-br from-blue-300 to-blue-400 rounded-xl shadow-lg group-hover:shadow-xl transition-all duration-300">
-                    <UserPlus className="w-8 h-8 text-white" />
-                  </div>
-                </div>
+        {/* Search and Filters */}
+        <Card className="mb-8 shadow-lg border border-gray-200 bg-white">
+          <CardContent className="p-6">
+            <div className="flex flex-col lg:flex-row gap-4 items-center">
+              {/* Search */}
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="Search auctions, brands, categories..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 h-12 border border-gray-300"
+                />
               </div>
-            </Link>
-            <div className="max-w-md mx-auto">
-              <h2 className="text-xl text-gray-700 mb-2">Join the Premier Auction Platform</h2>
-              <p className="text-gray-600 text-sm">Start your journey in the world of professional auctions</p>
-            </div>
-          </div>
 
-          {/* Enhanced Elegant Card */}
-          <Card className="bg-white/90 backdrop-blur-sm border border-gray-100 shadow-xl rounded-2xl overflow-hidden transform transition-all duration-300 hover:shadow-2xl">
-            <CardHeader className="bg-gradient-to-br from-blue-50 via-white to-cyan-50 p-10 text-center relative">
-              <div className="absolute inset-0 bg-grid-gray-200/[0.1] bg-[size:20px_20px]"></div>
-              <div className="absolute -top-4 right-6 w-10 h-10 bg-blue-200/30 rounded-full animate-pulse"></div>
-              <CardTitle className="text-3xl font-bold text-gray-900 mb-2 z-10 relative">Create Your Account</CardTitle>
-              <CardDescription className="text-gray-600 text-lg z-10 relative">
-                Choose your role and join thousands of successful traders
-              </CardDescription>
-            </CardHeader>
-            <form onSubmit={handleRegister}>
-              <CardContent className="p-10 space-y-8">
-                <div className="space-y-4">
-                  <Label className="text-lg font-semibold text-gray-900 block text-center flex items-center justify-center gap-2">
-                    <Sparkles className="w-5 h-5 text-blue-500 animate-pulse" />
-                    Choose Your Account Type
-                  </Label>
-                  <RadioGroup
-  value={formData.accountType}
-  onValueChange={handleRadioChange}
-  className="grid grid-cols-1 md:grid-cols-3 gap-6"
->
-  {[
-    {
-      value: "buyer",
-      label: "Buyer",
-      icon: ShoppingBag,
-      desc: "Bid on exclusive auctions",
-      color: "from-green-500 to-emerald-600",
-      features: ["Access to all auctions", "Bid tracking", "Watchlist"],
-    },
-    {
-      value: "seller",
-      label: "Seller",
-      icon: Briefcase,
-      desc: "List items for auction",
-      color: "from-purple-500 to-violet-600",
-      features: ["Create auctions", "Seller dashboard", "Analytics"],
-    },
-    {
-      value: "both",
-      label: "Buyer & Seller",
-      icon: Shield,
-      desc: "Complete platform access",
-      color: "from-blue-500 to-indigo-600",
-      features: ["All buyer features", "All seller features", "Priority support"],
-    },
-  ].map((item) => {
-    const Icon = item.icon;
-    const isSelected = formData.accountType === item.value;
-    return (
-      <div key={item.value} className="relative">
-        <RadioGroupItem value={item.value} id={item.value} className="peer sr-only" />
-        <Label
-          htmlFor={item.value}
-          className={`relative flex flex-col items-center justify-between p-6 rounded-xl cursor-pointer transition-all duration-300 border-2 h-72 ${
-            isSelected
-              ? "border-gray-300 bg-gray-50 shadow-md hover:shadow-lg"
-              : "border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300"
-          }`}
-        >
-          <div className={`absolute inset-0 bg-gradient-to-br ${item.color} opacity-10 rounded-xl`}></div>
-          <div className="relative flex flex-col items-center text-center h-full">
-            <div
-              className={`inline-flex items-center justify-center w-12 h-12 rounded-lg mb-3 bg-gradient-to-br ${item.color} shadow-md animate-scale-up`}
-            >
-              <Icon className="w-6 h-6 text-white" />
-            </div>
-            <h3 className="font-bold text-gray-900 text-lg mb-1">{item.label}</h3>
-            <p className="text-gray-600 text-sm mb-3">{item.desc}</p>
-            <ul className="flex-1 flex flex-col space-y-1 text-left pl-4">
-              {item.features.map((feature, index) => (
-                <li
-                  key={index}
-                  className="text-xs text-gray-500 flex items-start gap-1"
-                >
-                  <div className="w-1 h-1 bg-gray-500 rounded-full mt-1.5"></div>
-                  {feature}
-                </li>
-              ))}
-            </ul>
-          </div>
-          {isSelected && (
-            <div className="absolute -top-2 -right-2 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center shadow-md">
-              <div className="w-2 h-2 bg-white rounded-full"></div>
-            </div>
-          )}
-        </Label>
-      </div>
-    );
-  })}
-</RadioGroup>
-                </div>
+              {/* Quick Filters */}
+              <div className="flex gap-2 flex-wrap">
+                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((category) => (
+                      <SelectItem key={category.value} value={category.value}>
+                        {category.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
-                <div className="space-y-6 pt-8 border-t border-gray-200">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="w-8 h-8 bg-blue-200/50 rounded-lg flex items-center justify-center">
-                      <User className="w-4 h-4 text-blue-700" />
-                    </div>
-                    <h3 className="font-semibold text-xl text-gray-900">Personal Information</h3>
-                  </div>
+                <Select value={selectedAuctionType} onValueChange={setSelectedAuctionType}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {auctionTypes.map((type) => (
+                      <SelectItem key={type.value} value={type.value}>
+                        {type.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="firstName" className="text-gray-700 font-medium">
-                        First Name
-                      </Label>
-                      <div className="relative">
-                        <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-4 w-4" />
-                        <Input
-                          id="firstName"
-                          name="firstName"
-                          placeholder="John"
-                          className="pl-10 bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:bg-white transition-all rounded-lg"
-                          value={formData.firstName}
-                          onChange={handleInputChange}
-                          required
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="lastName" className="text-gray-700 font-medium">
-                        Last Name
-                      </Label>
-                      <div className="relative">
-                        <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-4 w-4" />
-                        <Input
-                          id="lastName"
-                          name="lastName"
-                          placeholder="Doe"
-                          className="pl-10 bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:bg-white transition-all rounded-lg"
-                          value={formData.lastName}
-                          onChange={handleInputChange}
-                          required
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="email" className="text-gray-700 font-medium">
-                      Email Address
-                    </Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-4 w-4" />
-                      <Input
-                        id="email"
-                        name="email"
-                        type="email"
-                        placeholder="you@example.com"
-                        className="pl-10 bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:bg-white transition-all rounded-lg"
-                        value={formData.email}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="phone" className="text-gray-700 font-medium">
-                      Phone Number <span className="text-gray-500 text-sm">(Optional)</span>
-                    </Label>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-4 w-4" />
-                      <Input
-                        id="phone"
-                        name="phone"
-                        type="tel"
-                        placeholder="+1 (555) 123-4567"
-                        className="pl-10 bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:bg-white transition-all rounded-lg"
-                        value={formData.phone}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                  </div>
-                </div>
-                </div>
-
-                {/* Seller Type Section */}
-
-                {(formData.accountType === "seller" || formData.accountType === "both") && (
-                  <div className="space-y-4 pt-4 border-t border-gray-200">
-                    <Label className="text-lg font-semibold text-gray-900 block text-center">Seller Type</Label>
-                    <RadioGroup
-                      value={formData.sellerType}
-                      onValueChange={handleSellerTypeChange}
-                      className="grid grid-cols-1 md:grid-cols-2 gap-4"
-                    >
-                      {[
-                        { value: "individual", label: "Individual" },
-                        { value: "organization", label: "Organization" },
-                      ].map((item) => (
-                        <div key={item.value} className="relative">
-                          <RadioGroupItem value={item.value} id={item.value} className="peer sr-only" />
-                          <Label
-                            htmlFor={item.value}
-                            className={`flex items-center justify-center p-4 rounded-xl cursor-pointer transition-all duration-300 border-2 w-full ${
-                              formData.sellerType === item.value
-                                ? "border-gray-300 bg-gray-50 shadow-md hover:shadow-lg"
-                                : "border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300"
-                            }`}
-                          >
-                            {item.label}
-                          </Label>
-                        </div>
-                      ))}
-                    </RadioGroup>
-
-                    {formData.sellerType === "organization" && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <Label htmlFor="organizationName" className="text-gray-700 font-medium">
-                            Organization Name
-                          </Label>
-                          <div className="relative">
-                            <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-4 w-4" />
-                            <Input
-                              id="organizationName"
-                              name="organizationName"
-                              placeholder="e.g., Acme Auctions"
-                              className="pl-10 bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:bg-white transition-all rounded-lg"
-                              value={formData.organizationName}
-                              onChange={handleInputChange}
-                              required
-                            />
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="organizationContact" className="text-gray-700 font-medium">
-                            Organization Contact
-                          </Label>
-                          <div className="relative">
-                            <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-4 w-4" />
-                            <Input
-                              id="organizationContact"
-                              name="organizationContact"
-                              type="tel"
-                              placeholder="+1 (555) 123-4567"
-                              className="pl-10 bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:bg-white transition-all rounded-lg"
-                              value={formData.organizationContact}
-                              onChange={handleInputChange}
-                              required
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <div className="space-y-4 pt-4 border-t border-gray-200">
-                  <h3 className="font-semibold text-lg text-gray-900">Location & Security</h3>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="location" className="text-gray-700">
-                      Primary Location (City, Country)
-                    </Label>
-                    <div className="relative">
-                      <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-4 w-4" />
-                      <Input
-                        id="location"
-                        name="location"
-                        placeholder="e.g., New York, USA"
-                        className="pl-10 bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:bg-white transition-all rounded-lg"
-                        value={formData.location}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                  </div>
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="password" className="text-gray-700">
-                        Password
-                      </Label>
-                      <div className="relative">
-                        <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-4 w-4" />
-                        <Input
-                          id="password"
-                          name="password"
-                          type={showPassword ? "text" : "password"}
-                          placeholder="••••••••"
-                          className="pl-10 bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:bg-white transition-all rounded-lg"
-                          value={formData.password}
-                          onChange={handleInputChange}
-                          required
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                        >
-                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                      </div>
-                      <p className="text-xs text-gray-500">
-                        Min 8 chars, 1 uppercase, 1 lowercase, 1 number.
-                      </p>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="confirmPassword" className="text-gray-700">
-                        Confirm Password
-                      </Label>
-                      <div className="relative">
-                        <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-4 w-4" />
-                        <Input
-                          id="confirmPassword"
-                          name="confirmPassword"
-                          type={showConfirmPassword ? "text" : "password"}
-                          placeholder="••••••••"
-                          className="pl-10 bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:bg-white transition-all rounded-lg"
-                          value={formData.confirmPassword}
-                          onChange={handleInputChange}
-                          required
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                        >
-                          {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-3 pt-4 border-t border-gray-200">
-                  <div className="flex items-start space-x-2">
-                    <Checkbox
-                      id="agreeToTerms"
-                      checked={formData.agreeToTerms}
-                      onCheckedChange={(checked) => handleCheckboxChange("agreeToTerms", !!checked)}
-                    />
-                    <Label htmlFor="agreeToTerms" className="text-sm leading-relaxed cursor-pointer text-gray-700">
-                      I agree to the Briskon Auctions{" "}
-                      <Link href="/terms" className="text-blue-600 hover:text-blue-500">
-                        Terms of Service
-                      </Link>
-                      ,{" "}
-                      <Link href="/privacy" className="text-blue-600 hover:text-blue-500">
-                        Privacy Policy
-                      </Link>
-                      , and{" "}
-                      <Link href="/auction-rules" className="text-blue-600 hover:text-blue-500">
-                        Auction Rules
-                      </Link>
-                      .
-                    </Label>
-                  </div>
-                  <div className="flex items-start space-x-2">
-                    <Checkbox
-                      id="subscribeNewsletter"
-                      checked={formData.subscribeNewsletter}
-                      onCheckedChange={(checked) => handleCheckboxChange("subscribeNewsletter", !!checked)}
-                    />
-                    <Label htmlFor="subscribeNewsletter" className="text-sm cursor-pointer text-gray-700">
-                      Yes, send me auction updates, tips, and exclusive offers from Briskon Auctions.
-                    </Label>
-                  </div>
-                </div>
-
-                {error && (
-                  <Alert variant="destructive">
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
-                )}
-                {successMessage && (
-                  <Alert
-                    variant="default"
-                    className="bg-green-100 border-green-300 text-green-800"
-                  >
-                    <AlertDescription>{successMessage}</AlertDescription>
-                  </Alert>
-                )}
-              </CardContent>
-              <CardFooter className="p-10 bg-gray-50 flex flex-col items-center space-y-6">
                 <Button
-                  type="submit"
-                  className="w-full md:w-1/3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg shadow-md transition-all duration-300 animate-pulse-once"
-                  disabled={authLoading || isLoading || !!successMessage}
+                  variant="outline"
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="flex items-center gap-2 border-2 border-gray-300 text-gray-700 hover:bg-gray-100 hover:border-gray-400"
                 >
-                  {authLoading || isLoading
-                    ? "Creating Account..."
-                    : successMessage
-                    ? "Account Created!"
-                    : "Create Account"}
+                  <Filter className="h-4 w-4" />
+                  More Filters
                 </Button>
-                <div className="text-center text-sm text-gray-600">
-                  <p>
-                    Already have an account?{" "}
-                    <Link href="/login" className="font-medium text-blue-600 hover:text-blue-500">
-                      Sign In
-                    </Link>
-                  </p>
+              </div>
+
+              {/* View Toggle */}
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={viewMode === "grid" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setViewMode("grid")}
+                  className={
+                    viewMode === "grid"
+                      ? "bg-blue-600 hover:bg-blue-700 text-white border border-blue-700"
+                      : "border-2 border-gray-300 text-gray-700 hover:bg-gray-100"
+                  }
+                >
+                  <Grid3X3 className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === "list" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setViewMode("list")}
+                  className={
+                    viewMode === "list"
+                      ? "bg-blue-600 hover:bg-blue-700 text-white border border-blue-700"
+                      : "border-2 border-gray-300 text-gray-700 hover:bg-gray-100"
+                  }
+                >
+                  <List className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Extended Filters */}
+            {showFilters && (
+              <div className="mt-4 pt-4 border-t grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {locations.map((location) => (
+                      <SelectItem key={location.value} value={location.value}>
+                        {location.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sort By" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ending-soon">Ending Soon</SelectItem>
+                    <SelectItem value="price-high">Price: High to Low</SelectItem>
+                    <SelectItem value="price-low">Price: Low to High</SelectItem>
+                    <SelectItem value="most-bids">Most Bids</SelectItem>
+                    <SelectItem value="most-watched">Most Watched</SelectItem>
+                    <SelectItem value="newest">Newest First</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Button
+                  variant="outline"
+                  className="flex items-center gap-2 border-2 border-gray-300 text-gray-700 hover:bg-gray-100 hover:border-gray-400"
+                >
+                  <SortAsc className="h-4 w-4" />
+                  Advanced Filters
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Auction Tabs */}
+        <Tabs defaultValue="live" className="w-full">
+          <TabsList className="grid w-full grid-cols-3 bg-white shadow-sm h-12 border border-gray-200">
+            <TabsTrigger
+              value="live"
+              className="flex items-center justify-center gap-2 data-[state=active]:bg-green-50 data-[state=active]:text-green-700"
+            >
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              Live Auctions ({liveAuctions.length})
+            </TabsTrigger>
+            <TabsTrigger
+              value="upcoming"
+              className="flex items-center justify-center gap-2 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700"
+            >
+              <Calendar className="h-4 w-4" />
+              Starting Soon ({upcomingAuctions.length})
+            </TabsTrigger>
+            <TabsTrigger
+              value="closed"
+              className="flex items-center justify-center gap-2 data-[state=active]:bg-gray-50 data-[state=active]:text-gray-700"
+            >
+              <CheckCircle className="h-4 w-4" />
+              Recently Closed ({closedAuctions.length})
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="live" className="mt-8">
+            {liveAuctions.length > 0 ? (
+              <div
+                className={`grid gap-6 ${
+                  viewMode === "grid"
+                    ? "md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                    : "grid-cols-1"
+                }`}
+              >
+                {liveAuctions.map((auction) => (
+                  <AuctionCard key={auction.id} auction={auction} />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <div className="text-gray-400 mb-4">
+                  <TrendingUp className="h-12 w-12 mx-auto" />
                 </div>
-              </CardFooter>
-            </form>
-          </Card>
+                <h3 className="text-lg font-semibold text-gray-600 mb-2">
+                  No live auctions found
+                </h3>
+                <p className="text-gray-500">Try adjusting your filters or check back later.</p>
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="upcoming" className="mt-8">
+            {upcomingAuctions.length > 0 ? (
+              <div
+                className={`grid gap-6 ${
+                  viewMode === "grid"
+                    ? "md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                    : "grid-cols-1"
+                }`}
+              >
+                {upcomingAuctions.map((auction) => (
+                  <AuctionCard key={auction.id} auction={auction} />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <div className="text-gray-400 mb-4">
+                  <Calendar className="h-12 w-12 mx-auto" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-600 mb-2">
+                  No upcoming auctions found
+                </h3>
+                <p className="text-gray-500">Try adjusting your filters or check back later.</p>
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="closed" className="mt-8">
+            {closedAuctions.length > 0 ? (
+              <div
+                className={`grid gap-6 ${
+                  viewMode === "grid"
+                    ? "md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                    : "grid-cols-1"
+                }`}
+              >
+                {closedAuctions.map((auction) => (
+                  <AuctionCard key={auction.id} auction={auction} />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <div className="text-gray-400 mb-4">
+                  <CheckCircle className="h-12 w-12 mx-auto" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-600 mb-2">
+                  No closed auctions found
+                </h3>
+                <p className="text-gray-500">Try adjusting your filters or check back later.</p>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+
+        {/* Load More */}
+        <div className="text-center mt-12">
+          <Button
+            variant="outline"
+            size="lg"
+            className="px-8 border-2 border-gray-300 text-gray-700 hover:bg-gray-100 hover:border-gray-400"
+          >
+            Load More Auctions
+          </Button>
         </div>
       </div>
     </div>
