@@ -23,6 +23,7 @@ import {
 import Image from "next/image";
 import { useAuth } from "@/hooks/use-auth";
 import { LoginPrompt } from "@/components/login-prompt";
+import { ReactNode } from "react";
 
 // Dummy calculateTimeLeft function (replace with actual implementation if needed)
 const calculateTimeLeft = (endDate: Date): string => {
@@ -34,6 +35,48 @@ const calculateTimeLeft = (endDate: Date): string => {
   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
   return `${days}d ${hours}h ${minutes}m`;
 };
+
+function renderKeyValueBlock(
+  data: string | Record<string, any> | undefined,
+  fallback: string
+): React.ReactNode {
+  try {
+    const parsed: any[] =
+      typeof data === "string" ? JSON.parse(data) : data ?? [];
+
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      return (
+        <span className="text-gray-600 dark:text-gray-300 ml-4">
+          {fallback}
+        </span>
+      );
+    }
+
+    return (
+      <>
+        {parsed.map((attr, index) => (
+          attr.value ? (
+            <div key={index} className="text-gray-600 dark:text-gray-300 ml-4">
+              {attr.name}:{" "}
+              {attr.type === "color" ? (
+                <span className="inline-block w-4 h-4 rounded-sm border ml-1" style={{ backgroundColor: attr.value }} title={attr.value}></span>
+              ) : (
+                attr.value
+              )}
+            </div>
+          ) : null
+        ))}
+      </>
+    );
+  } catch {
+    return (
+      <span className="text-gray-600 dark:text-gray-300 ml-4">
+        Invalid attributes data
+      </span>
+    );
+  }
+}
+
 
 // Updated Auction interface
 interface Auction {
@@ -53,7 +96,7 @@ interface Auction {
   productimages?: string[];
   productdocuments?: string[];
   productdescription?: string;
-  specifications?: string;
+  specifications?: string; // JSON string or null
   buyNowPrice?: number;
   participants?: string[]; // Array of user IDs (UUIDs), parsed from jsonb
   bidcount?: number;
@@ -63,6 +106,11 @@ interface Auction {
   issilentauction?: boolean; // New field to indicate silent auction
   currentbidder?: string; // New field for current highest bidder email
   percent?: number; // New field for percentage increment (if applicable)
+  attributes?: string; // JSON string or null
+  sku?: string;
+  brand?: string;
+  model?: string;
+  reserveprice?: number;
 }
 
 // Bid interface
@@ -366,20 +414,53 @@ export default function AuctionDetailPage() {
                     </div>
                   </TabsContent>
 
-                  <TabsContent value="specifications" className="mt-6">
-                    <div className="space-y-4">
-                      {auction.specifications ? (
-                        Object.entries(JSON.parse(auction.specifications)).map(([key, value]) => (
-                          <div key={key} className="flex justify-between py-2 border-b">
-                            <span className="font-medium">{key}</span>
-                            <span className="text-gray-600 dark:text-gray-300">{value as string}</span>
-                          </div>
-                        ))
-                      ) : (
-                        <p>No specifications available</p>
-                      )}
-                    </div>
-                  </TabsContent>
+<TabsContent value="specifications" className="mt-6">
+  <div className="space-y-4">
+    {auction.attributes || auction.specifications || auction.sku || auction.brand || auction.model || auction.reserveprice ? (
+      <>
+        {auction.sku && (
+          <div className="flex justify-between py-2 border-b">
+            <span className="font-medium">SKU</span>
+            <span className="text-gray-600 dark:text-gray-300">{auction.sku}</span>
+          </div>
+        )}
+        {auction.brand && (
+          <div className="flex justify-between py-2 border-b">
+            <span className="font-medium">Brand</span>
+            <span className="text-gray-600 dark:text-gray-300">{auction.brand}</span>
+          </div>
+        )}
+        {auction.model && (
+          <div className="flex justify-between py-2 border-b">
+            <span className="font-medium">Model</span>
+            <span className="text-gray-600 dark:text-gray-300">{auction.model}</span>
+          </div>
+        )}
+        {auction.reserveprice && (
+          <div className="flex justify-between py-2 border-b">
+            <span className="font-medium">Reserve Price</span>
+            <span className="text-gray-600 dark:text-gray-300">${auction.reserveprice.toLocaleString()}</span>
+          </div>
+        )}
+        {auction.attributes && (
+          <div className="flex flex-col py-2 border-b">
+            <span className="font-medium">Attributes</span>
+            {renderKeyValueBlock(auction.attributes, "No attributes data")}
+          </div>
+        )}
+        {auction.specifications && (
+          <div className="flex flex-col py-2 border-b">
+            <span className="font-medium">Specifications</span>
+            {renderKeyValueBlock(auction.specifications, "No specifications data")}
+          </div>
+        )}
+      </>
+    ) : (
+      <p>No specifications available</p>
+    )}
+  </div>
+</TabsContent>
+
 
                   <TabsContent value="bids" className="mt-6">
                     <div className="space-y-3">
