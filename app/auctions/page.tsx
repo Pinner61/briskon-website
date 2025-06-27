@@ -58,6 +58,7 @@ type AuctionItem = {
   productimages?: string[]; // Array of Supabase Storage URLs
   productdocuments?: string[]; // Array of Supabase Storage URLs
   createdat?: string; // Added for sorting consistency
+  auctionsubtype?: string; // Added to handle sealed auctions
 };
 
 const categories = [
@@ -141,10 +142,10 @@ export default function AuctionsPage() {
           const start = a.scheduledstart ? new Date(a.scheduledstart) : null;
           const duration = a.auctionduration
             ? ((durationObj) => (
-              ((durationObj.days || 0) * 24 * 60 * 60) +
-              ((durationObj.hours || 0) * 60 * 60) +
-              ((durationObj.minutes || 0) * 60)
-            ))(a.auctionduration)
+                ((durationObj.days || 0) * 24 * 60 * 60) +
+                ((durationObj.hours || 0) * 60 * 60) +
+                ((durationObj.minutes || 0) * 60)
+              ))(a.auctionduration)
             : 0;
           const end = start ? new Date(start.getTime() + duration * 1000) : null;
           const now = new Date();
@@ -189,6 +190,7 @@ export default function AuctionsPage() {
             productimages: a.productimages || [], // Array of Supabase Storage URLs
             productdocuments: a.productdocuments || [], // Array of Supabase Storage URLs
             createdat: a.createdat || "", // For sorting if needed
+            auctionsubtype: a.auctionsubtype || undefined, // Map auctionsubtype
           };
         });
         setAllAuctionItems(mapped);
@@ -397,7 +399,13 @@ export default function AuctionsPage() {
                 </div>
               )}
               <div className="space-y-2 mb-4">
-                {auction.status === "live" && auction.currentBid !== undefined && (
+                {auction.status === "live" && auction.auctionsubtype === "sealed" && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-600">Status</span>
+                    <span className="font-bold text-gray-800">Sealed Auction</span>
+                  </div>
+                )}
+                {auction.status === "live" && auction.auctionsubtype !== "sealed" && auction.currentBid !== undefined && (
                   <div className="flex justify-between items-center">
                     <span className="text-xs text-gray-600">Current Bid</span>
                     <span className="font-bold text-green-600">${auction.currentBid.toLocaleString()}</span>
