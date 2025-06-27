@@ -1,37 +1,41 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-// Define the Auction interface based on your schema
-interface Auction {
-  id: string;
-  productname: string | null;
-  productdescription: string | null;
-  productimages: string[] | null;
-  startprice: number | null;
-  currentbid: number | null;
-  minimumincrement: number | null;
-  percent: number | null;
-  bidincrementype: string | null;
-  auctionduration: { days?: number; hours?: number; minutes?: number } | null;
-  scheduledstart: string | null;
-  bidcount: number | null;
-  participants: string[] | null;
-  issilentauction: boolean | null;
-  currentbidder: string | null;
-  createdby: string | null;
-}
-
-// Interface with computed timeLeft
-interface AuctionResponse extends Auction {
-  timeLeft?: string;
-}
-
+// Initialize Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+// Define interfaces
+interface Auction {
+  id: string;
+  productname?: string;
+  productdescription?: string;
+  productimages?: string[];
+  startprice?: number;
+  currentbid?: number;
+  minimumincrement?: number;
+  percent?: number;
+  bidincrementtype?: "fixed" | "percentage";
+  auctionduration?: { days?: number; hours?: number; minutes?: number };
+  scheduledstart?: string;
+  bidcount?: number;
+  participants?: string[];
+  issilentauction?: boolean;
+  currentbidder?: string;
+  createdby?: string;
+}
+
+interface AuctionResponse extends Auction {
+  timeLeft?: string;
+}
+
+export async function GET(
+  req: Request,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
+    const params = await context.params;
     const { id } = params;
 
     const { data, error } = await supabase
@@ -61,12 +65,12 @@ export async function GET(request: Request, { params }: { params: { id: string }
       return NextResponse.json({ success: false, error: error.message }, { status: 404 });
     }
 
-    // Cast data to Auction type and compute timeLeft
     const auction = data as Auction;
+
     if (auction && !("timeLeft" in auction)) {
       const start = new Date(auction.scheduledstart || new Date());
       const duration = auction.auctionduration
-        ? ((d) => ((d.days || 0) * 24 * 60 * 60) + ((d.hours || 0) * 60 * 60) + ((d.minutes || 0) * 60))(
+        ? ((d) => ((d.days || 0) * 86400) + ((d.hours || 0) * 3600) + ((d.minutes || 0) * 60))(
             auction.auctionduration
           )
         : 0;
@@ -76,6 +80,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
 
     return NextResponse.json({ success: true, data: auction as AuctionResponse }, { status: 200 });
   } catch (error) {
+    console.error("Route Error:", error);
     return NextResponse.json(
       { success: false, error: "Internal server error" },
       { status: 500 }
@@ -83,8 +88,9 @@ export async function GET(request: Request, { params }: { params: { id: string }
   }
 }
 
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
+export async function PUT(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
+    const params = await context.params; // Await params to handle promise
     const { id } = params;
     const body = await request.json();
     const { user_id, user_email, amount, created_at } = body;
@@ -100,7 +106,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     // Fetch current auction data
     const { data: auctionData, error: fetchError } = await supabase
       .from("auctions")
-      .select("startprice, currentbid, minimumincrement, percent, bidincrementtype, participants, bidcount, createdby")
+      .select("startprice, currentbid, minimumincrement, percent, bidincrementtype, participants, bidcount, createdby, scheduledstart, auctionduration")
       .eq("id", id)
       .single();
 
@@ -111,9 +117,32 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       );
     }
 
-    // Validate bid amount based on increment type
+    // Check auction status
+    const now = new Date();
+    const start = new Date(auctionData.scheduledstart || now);
+    const duration = auctionData.auctionduration
+      ? ((d) => ((d.days || 0) * 86400) + ((d.hours || 0) * 3600) + ((d.minutes || 0) * 60))(
+          auctionData.auctionduration
+        )
+      : 0;
+    const end = new Date(start.getTime() + duration * 1000);
+
+    if (now < start) {
+      return NextResponse.json(
+        { success: false, error: "Auction has not started yet" },
+        { status: 400 }
+      );
+    }
+    if (now > end) {
+      return NextResponse.json(
+        { success: false, error: "Auction has ended" },
+        { status: 400 }
+      );
+    }
+
+    // Validate bid amount based on increment type and bid count
     let minimumBid = auctionData.startprice || 0;
-    if (auctionData.currentbid) {
+    if (auctionData.bidcount && auctionData.bidcount > 0 && auctionData.currentbid) {
       if (auctionData.bidincrementtype === "percentage" && auctionData.percent) {
         minimumBid = auctionData.currentbid * (1 + auctionData.percent / 100);
       } else if (auctionData.bidincrementtype === "fixed" && auctionData.minimumincrement) {
