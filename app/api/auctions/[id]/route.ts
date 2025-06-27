@@ -24,6 +24,7 @@ interface Auction {
   issilentauction?: boolean;
   currentbidder?: string;
   createdby?: string;
+  auctionsubtype?: string;
 }
 
 interface AuctionResponse extends Auction {
@@ -40,29 +41,30 @@ export async function GET(
 
     const { data, error } = await supabase
       .from("auctions")
- .select(`
-  id,
-  productname,
-  productdescription,
-  productimages,
-  startprice,
-  currentbid,
-  minimumincrement,
-  percent,
-  bidincrementtype,
-  auctionduration,
-  scheduledstart,
-  bidcount,
-  participants,
-  issilentauction,
-  currentbidder,
-  createdby,
-  attributes,
-  sku,
-  brand,
-  model,
-  reserveprice
-`)
+      .select(`
+        id,
+        productname,
+        productdescription,
+        productimages,
+        startprice,
+        currentbid,
+        minimumincrement,
+        percent,
+        bidincrementtype,
+        auctionduration,
+        scheduledstart,
+        bidcount,
+        participants,
+        issilentauction,
+        currentbidder,
+        createdby,
+        attributes,
+        sku,
+        brand,
+        model,
+        reserveprice,
+        auctionsubtype
+      `)
       .eq("id", id)
       .single();
 
@@ -111,7 +113,7 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
     // Fetch current auction data
     const { data: auctionData, error: fetchError } = await supabase
       .from("auctions")
-      .select("startprice, currentbid, minimumincrement, percent, bidincrementtype, participants, bidcount, createdby, scheduledstart, auctionduration")
+      .select("startprice, currentbid, minimumincrement, percent, bidincrementtype, participants, bidcount, createdby, scheduledstart, auctionduration, auctionsubtype")
       .eq("id", id)
       .single();
 
@@ -145,16 +147,18 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
       );
     }
 
-    // Validate bid amount based on increment type and bid count
+    // Validate bid amount based on auction type
     let minimumBid = auctionData.startprice || 0;
-    if (auctionData.bidcount && auctionData.bidcount > 0 && auctionData.currentbid) {
-      if (auctionData.bidincrementtype === "percentage" && auctionData.percent) {
-        minimumBid = auctionData.currentbid * (1 + auctionData.percent / 100);
-      } else if (auctionData.bidincrementtype === "fixed" && auctionData.minimumincrement) {
-        minimumBid = auctionData.currentbid + auctionData.minimumincrement;
+    if (auctionData.auctionsubtype !== "sealed") {
+      if (auctionData.bidcount && auctionData.bidcount > 0 && auctionData.currentbid) {
+        if (auctionData.bidincrementtype === "percentage" && auctionData.percent) {
+          minimumBid = auctionData.currentbid * (1 + auctionData.percent / 100);
+        } else if (auctionData.bidincrementtype === "fixed" && auctionData.minimumincrement) {
+          minimumBid = auctionData.currentbid + auctionData.minimumincrement;
+        }
       }
+      minimumBid = Math.max(minimumBid, auctionData.startprice || 0);
     }
-    minimumBid = Math.max(minimumBid, auctionData.startprice || 0);
 
     if (amount < minimumBid) {
       return NextResponse.json(
@@ -171,8 +175,8 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
       );
     }
 
-    // Determine if this is the user's first bid
-    const isFirstBid = !auctionData.participants?.includes(user_id);
+    // Determine if this is the user's first bid (only restrict for sealed auctions)
+    const isFirstBid = auctionData.auctionsubtype !== "sealed" || !auctionData.participants?.includes(user_id);
     const updatedParticipants = isFirstBid
       ? [...(auctionData.participants || []), user_id]
       : auctionData.participants;
