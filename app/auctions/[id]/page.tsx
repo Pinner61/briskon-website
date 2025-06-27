@@ -35,7 +35,7 @@ const calculateTimeLeft = (endDate: Date): string => {
   return `${days}d ${hours}h ${minutes}m`;
 };
 
-// Define the Auction type based on the API response
+// Updated Auction interface
 interface Auction {
   id: string;
   productname?: string;
@@ -43,6 +43,7 @@ interface Auction {
   categoryid?: string;
   auctiontype: "forward" | "reverse";
   currentbid?: number;
+  bidincrementtype?: "fixed" | "percentage";
   minimumincrement?: number;
   startprice?: number;
   scheduledstart?: string;
@@ -60,6 +61,9 @@ interface Auction {
   timeLeft?: string;
   bidhistory?: { bidder: string; amount: number; time: string }[];
   questions?: { user: string; question: string; answer?: string; time: string }[];
+  issilentauction?: boolean; // New field to indicate silent auction
+  currentbidder?: string; // New field for current highest bidder email
+  percent?: number; // New field for percentage increment (if applicable)
 }
 
 export default function AuctionDetailPage() {
@@ -96,84 +100,59 @@ export default function AuctionDetailPage() {
   }, [auctionId]);
 
   const handlePlaceBid = async () => {
-    if (!isAuthenticated) {
-      setShowLoginPrompt(true);
-      alert("Please log in to place a bid.");
-      return;
-    }
+  if (!isAuthenticated) {
+    setShowLoginPrompt(true);
+    alert("Please log in to place a bid.");
+    return;
+  }
 
-    if (!user?.role || (user.role !== "buyer" && user.role !== "both")) {
-      alert("Only buyers can place bids. Please update your account type.");
-      return;
-    }
+  if (!user?.role || (user.role !== "buyer" && user.role !== "both")) {
+    alert("Only buyers can place bids. Please update your account type.");
+    return;
+  }
 
-    if (user.email === auction?.createdby) {
-      alert("You cannot place a bid on your own auction.");
-      return;
-    }
+  const amount = Number(bidAmount);
+  if (isNaN(amount)) {
+    alert("Please enter a valid bid amount.");
+    return;
+  }
 
-    const amount = Number(bidAmount);
-    if (isNaN(amount)) {
-      alert("Please enter a valid bid amount.");
-      return;
-    }
+  try {
+    console.log("Placing bid:", { auctionId, userId: user.id, amount });
+    const bidRes = await fetch(`/api/auctions/${auctionId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        user_id: user.id,
+        user_email: user.email,
+        amount,
+        created_at: new Date().toISOString(),
+      }),
+    });
+    const bidJson = await bidRes.json();
+    if (!bidJson.success) throw new Error(bidJson.error || "Failed to record bid");
 
-    const minimumBid = Math.max(
-      (auction?.currentbid || 0) + (auction?.minimumincrement || 100),
-      auction?.startprice || 0
-    );
-    if (amount < minimumBid) {
-      alert(`Bid must be at least $${minimumBid.toLocaleString()}`);
-      return;
-    }
+    const auctionRes = await fetch(`/api/auctions/${auctionId}`); // Refresh auction data
+    const auctionJson = await auctionRes.json();
+    if (!auctionJson.success) throw new Error(auctionJson.error || "Failed to fetch updated auction");
 
-    try {
-      console.log("Placing bid:", { auctionId, userId: user.id, amount });
-      const bidRes = await fetch("/api/bids", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          auction_id: auctionId,
-          user_id: user.id,
-          amount,
-          created_at: new Date().toISOString(),
-        }),
-      });
-      const bidJson = await bidRes.json();
-      if (!bidJson.success) throw new Error(bidJson.error || "Failed to record bid");
+    const start = new Date(auctionJson.data.scheduledstart || "");
+    const duration = auctionJson.data.auctionduration
+      ? ((d) => ((d.days || 0) * 24 * 60 * 60) + ((d.hours || 0) * 60 * 60) + ((d.minutes || 0) * 60))(
+          auctionJson.data.auctionduration
+        )
+      : 0;
+    const end = new Date(start.getTime() + duration * 1000);
+    const timeLeft = calculateTimeLeft(end);
 
-      const isFirstBid = !(auction?.participants || []).includes(user.id);
-      const updatedParticipants = isFirstBid
-        ? [...(auction?.participants || []), user.id]
-        : auction?.participants || [];
-      const auctionRes = await fetch(`/api/auctions/${auctionId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          currentbid: amount,
-          participants: updatedParticipants,
-          bidcount: isFirstBid ? (auction?.bidcount || 0) + 1 : auction?.bidcount,
-        }),
-      });
-      const auctionJson = await auctionRes.json();
-      if (!auctionJson.success) throw new Error(auctionJson.error || "Failed to update auction");
-
-      const start = new Date(auctionJson.data.scheduledstart || "");
-      const duration = auctionJson.data.auctionduration
-        ? ((d) => ((d.days || 0) * 24 * 60 * 60) + ((d.hours || 0) * 60 * 60) + ((d.minutes || 0) * 60))(auctionJson.data.auctionduration)
-        : 0;
-      const end = new Date(start.getTime() + duration * 1000);
-      const timeLeft = calculateTimeLeft(end);
-
-      setAuction({ ...auctionJson.data, timeLeft });
-      setBidAmount("");
-      alert(`Bid of $${amount.toLocaleString()} placed successfully!`);
-    } catch (err) {
-      console.error("Bid placement error:", err);
-      alert(err instanceof Error ? err.message : "An error occurred while placing bid");
-    }
-  };
-
+    setAuction({ ...auctionJson.data, timeLeft });
+    setBidAmount("");
+    alert(`Bid of $${amount.toLocaleString()} placed successfully!`);
+  } catch (err) {
+    console.error("Bid placement error:", err);
+    alert(err instanceof Error ? err.message : "An error occurred while placing bid");
+  }
+};
   const handleBuyNow = () => {
     if (!isAuthenticated) {
       setShowLoginPrompt(true);
@@ -195,10 +174,15 @@ export default function AuctionDetailPage() {
   };
 
   const getMinimumBid = () => {
-    return Math.max(
-      (auction?.currentbid || 0) + (auction?.minimumincrement || 100),
-      auction?.startprice || 0
-    );
+    let minimumBid = auction?.startprice || 0;
+    if (auction?.currentbid) {
+      if (auction.bidincrementtype === "percentage" && auction.percent) {
+        minimumBid = auction.currentbid * (1 + auction.percent / 100);
+      } else if (auction.bidincrementtype === "fixed" && auction.minimumincrement) {
+        minimumBid = auction.currentbid + auction.minimumincrement;
+      }
+    }
+    return Math.max(minimumBid, auction?.startprice || 0);
   };
 
   const handlePrevImage = () => {
@@ -334,7 +318,7 @@ export default function AuctionDetailPage() {
 
                   <TabsContent value="bids" className="mt-6">
                     <div className="space-y-3">
-                      {auction.bidhistory?.length ? (
+                      {auction.bidhistory?.length && !auction.issilentauction ? (
                         auction.bidhistory.map((bid: { bidder: string; amount: number; time: string }, index: number) => (
                           <div
                             key={index}
@@ -350,7 +334,7 @@ export default function AuctionDetailPage() {
                           </div>
                         ))
                       ) : (
-                        <p>No bid history available</p>
+                        <p>{auction.issilentauction ? "Bid history hidden for silent auction" : "No bid history available"}</p>
                       )}
                     </div>
                   </TabsContent>
@@ -397,7 +381,7 @@ export default function AuctionDetailPage() {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Bidding Card */}
-            <Card className="hover-lift transition-smooth card-hover">
+            <Card >
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Gavel className="h-5 w-5 animate-bounce-gentle" />
@@ -410,6 +394,11 @@ export default function AuctionDetailPage() {
                     ${auction.currentbid?.toLocaleString() || "N/A"}
                   </div>
                   <div className="text-sm text-gray-600 dark:text-gray-300">Current Highest Bid</div>
+                  {auction.currentbidder && (
+                    <div className="text-sm text-gray-600 dark:text-gray-300">
+                      By: {auction.currentbidder}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex items-center justify-center gap-4 text-sm">
@@ -431,19 +420,19 @@ export default function AuctionDetailPage() {
                       placeholder={`Minimum: $${getMinimumBid().toLocaleString()}`}
                       value={bidAmount}
                       onChange={(e) => setBidAmount(e.target.value)}
-                      className="mt-1 transition-smooth focus:scale-105"
+                      className="mt-1 transition-smooth"
                     />
                   </div>
-
+                  <div style={{ width: '100%', display: 'block', position: 'relative',zIndex: 1,pointerEvents: 'auto' }}>
                   <Button
                     className="w-full transition-smooth hover-lift transform-3d"
                     onClick={handlePlaceBid}
                     disabled={isButtonDisabled}
-                    style={{ display: "block", width: "100%", padding: "0.5rem" }}
+                    style={{ display: "block", width: "100%", padding: "0.5rem",boxSizing: 'border-box',position: 'relative',zIndex: 1,pointerEvents: 'auto' }}
                   >
                     Place Bid
                   </Button>
-
+                  </div>
                   {auction.buyNowPrice && (
                     <>
                       <div className="text-center text-sm text-gray-600 dark:text-gray-300">or</div>
@@ -460,7 +449,12 @@ export default function AuctionDetailPage() {
 
                 <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
                   <AlertCircle className="h-4 w-4" />
-                  <span>Minimum bid increment: ${auction.minimumincrement || 100}</span>
+                  <span>
+                    Minimum bid increment: $
+                    {auction.bidincrementtype === "percentage" && auction.percent
+                      ? (auction.currentbid || auction.startprice || 0) * (1 + auction.percent / 100)
+                      : auction.minimumincrement || 100}
+                  </span>
                 </div>
               </CardContent>
             </Card>
