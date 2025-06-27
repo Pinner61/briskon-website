@@ -46,6 +46,7 @@ export async function GET(
         productname,
         productdescription,
         productimages,
+        productdocuments,
         startprice,
         currentbid,
         minimumincrement,
