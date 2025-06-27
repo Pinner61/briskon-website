@@ -40,24 +40,29 @@ export async function GET(
 
     const { data, error } = await supabase
       .from("auctions")
-      .select(`
-        id,
-        productname,
-        productdescription,
-        productimages,
-        startprice,
-        currentbid,
-        minimumincrement,
-        percent,
-        bidincrementtype,
-        auctionduration,
-        scheduledstart,
-        bidcount,
-        participants,
-        issilentauction,
-        currentbidder,
-        createdby
-      `)
+ .select(`
+  id,
+  productname,
+  productdescription,
+  productimages,
+  startprice,
+  currentbid,
+  minimumincrement,
+  percent,
+  bidincrementtype,
+  auctionduration,
+  scheduledstart,
+  bidcount,
+  participants,
+  issilentauction,
+  currentbidder,
+  createdby,
+  attributes,
+  sku,
+  brand,
+  model,
+  reserveprice
+`)
       .eq("id", id)
       .single();
 
