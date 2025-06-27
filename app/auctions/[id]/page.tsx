@@ -77,7 +77,6 @@ function renderKeyValueBlock(
   }
 }
 
-
 // Updated Auction interface
 interface Auction {
   id: string;
@@ -414,75 +413,76 @@ export default function AuctionDetailPage() {
                     </div>
                   </TabsContent>
 
-<TabsContent value="specifications" className="mt-6">
-  <div className="space-y-4">
-    {auction.attributes || auction.specifications || auction.sku || auction.brand || auction.model || auction.reserveprice ? (
-      <>
-        {auction.sku && (
-          <div className="flex justify-between py-2 border-b">
-            <span className="font-medium">SKU</span>
-            <span className="text-gray-600 dark:text-gray-300">{auction.sku}</span>
-          </div>
-        )}
-        {auction.brand && (
-          <div className="flex justify-between py-2 border-b">
-            <span className="font-medium">Brand</span>
-            <span className="text-gray-600 dark:text-gray-300">{auction.brand}</span>
-          </div>
-        )}
-        {auction.model && (
-          <div className="flex justify-between py-2 border-b">
-            <span className="font-medium">Model</span>
-            <span className="text-gray-600 dark:text-gray-300">{auction.model}</span>
-          </div>
-        )}
-        {auction.reserveprice && (
-          <div className="flex justify-between py-2 border-b">
-            <span className="font-medium">Reserve Price</span>
-            <span className="text-gray-600 dark:text-gray-300">${auction.reserveprice.toLocaleString()}</span>
-          </div>
-        )}
-        {auction.attributes && (
-          <div className="flex flex-col py-2 border-b">
-            <span className="font-medium">Attributes</span>
-            {renderKeyValueBlock(auction.attributes, "No attributes data")}
-          </div>
-        )}
-        {auction.specifications && (
-          <div className="flex flex-col py-2 border-b">
-            <span className="font-medium">Specifications</span>
-            {renderKeyValueBlock(auction.specifications, "No specifications data")}
-          </div>
-        )}
-      </>
-    ) : (
-      <p>No specifications available</p>
-    )}
-  </div>
-</TabsContent>
-
-
-                  <TabsContent value="bids" className="mt-6">
-                    <div className="space-y-3">
-                      {bidHistory.length > 0 && !auction.issilentauction ? (
-                        bidHistory.map((bid, index) => (
-                          <div
-                            key={index}
-                            className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-800 rounded"
-                          >
-                            <div>
-                              <span className="font-medium">{bid.bidder}</span>
-                              <span className="text-sm text-gray-600 dark:text-gray-300 ml-2">
-                                {bid.time}
-                              </span>
+                  <TabsContent value="specifications" className="mt-6">
+                    <div className="space-y-4">
+                      {auction.attributes || auction.specifications || auction.sku || auction.brand || auction.model || auction.reserveprice ? (
+                        <>
+                          {auction.sku && (
+                            <div className="flex justify-between py-2 border-b">
+                              <span className="font-medium">SKU</span>
+                              <span className="text-gray-600 dark:text-gray-300">{auction.sku}</span>
                             </div>
-                            <span className="font-semibold text-green-600">${bid.amount.toLocaleString()}</span>
-                          </div>
-                        ))
+                          )}
+                          {auction.brand && (
+                            <div className="flex justify-between py-2 border-b">
+                              <span className="font-medium">Brand</span>
+                              <span className="text-gray-600 dark:text-gray-300">{auction.brand}</span>
+                            </div>
+                          )}
+                          {auction.model && (
+                            <div className="flex justify-between py-2 border-b">
+                              <span className="font-medium">Model</span>
+                              <span className="text-gray-600 dark:text-gray-300">{auction.model}</span>
+                            </div>
+                          )}
+                          {auction.reserveprice && (
+                            <div className="flex justify-between py-2 border-b">
+                              <span className="font-medium">Reserve Price</span>
+                              <span className="text-gray-600 dark:text-gray-300">${auction.reserveprice.toLocaleString()}</span>
+                            </div>
+                          )}
+                          {auction.attributes && (
+                            <div className="flex flex-col py-2 border-b">
+                              <span className="font-medium">Attributes</span>
+                              {renderKeyValueBlock(auction.attributes, "No attributes data")}
+                            </div>
+                          )}
+                          {auction.specifications && (
+                            <div className="flex flex-col py-2 border-b">
+                              <span className="font-medium">Specifications</span>
+                              {renderKeyValueBlock(auction.specifications, "No specifications data")}
+                            </div>
+                          )}
+                        </>
                       ) : (
-                        <p>{auction?.issilentauction ? "Bid history hidden for silent auction" : "No bid history available"}</p>
+                        <p>No specifications available</p>
                       )}
                     </div>
+                  </TabsContent>
+
+                  <TabsContent value="bids" className="mt-6">
+                    {!auction.issilentauction && (
+                      <div className="space-y-3">
+                        {bidHistory.length > 0 ? (
+                          bidHistory.map((bid, index) => (
+                            <div
+                              key={index}
+                              className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-800 rounded"
+                            >
+                              <div>
+                                <span className="font-medium">{bid.bidder}</span>
+                                <span className="text-sm text-gray-600 dark:text-gray-300 ml-2">
+                                  {bid.time}
+                                </span>
+                              </div>
+                              <span className="font-semibold text-green-600">${bid.amount.toLocaleString()}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <p>No bid history available</p>
+                        )}
+                      </div>
+                    )}
                   </TabsContent>
 
                   <TabsContent value="qa" className="mt-6">
@@ -537,12 +537,16 @@ export default function AuctionDetailPage() {
               <CardContent className="space-y-4">
                 <div className="text-center">
                   <div className="text-3xl font-bold text-green-600 mb-1 animate-pulse-glow">
-                    ${auction.bidcount && auction.bidcount > 0 ? auction.currentbid?.toLocaleString() || "N/A" : auction.startprice?.toLocaleString() || "N/A"}
+                    {auction.issilentauction 
+                      ? (auction.bidcount === 0 && auction.startprice ? `$${auction.startprice.toLocaleString()}` : auction.bidcount && auction.bidcount > 0 && auction.currentbid ? `$${auction.currentbid.toLocaleString()}` : "N/A")
+                      : auction.bidcount && auction.bidcount > 0 ? auction.currentbid?.toLocaleString() || "N/A" : auction.startprice?.toLocaleString() || "N/A"}
                   </div>
                   <div className="text-sm text-gray-600 dark:text-gray-300">
-                    {auction.bidcount && auction.bidcount > 0 ? "Current Highest Bid" : "Starting Price"}
+                    {auction.issilentauction 
+                      ? (auction.bidcount === 0 && auction.startprice ? "Starting Price" : auction.bidcount && auction.bidcount > 0 ? "Current Bid" : "")
+                      : auction.bidcount && auction.bidcount > 0 ? "Current Highest Bid" : "Starting Price"}
                   </div>
-                  {auction.currentbidder && auction.bidcount && auction.bidcount > 0 && (
+                  {!auction.issilentauction && auction.currentbidder && auction.bidcount && auction.bidcount > 0 && (
                     <div className="text-sm text-gray-600 dark:text-gray-300">
                       By: {auction.currentbidder}
                     </div>
@@ -556,7 +560,7 @@ export default function AuctionDetailPage() {
                   </div>
                   <div className="flex items-center gap-1 hover-lift">
                     <Users className="h-4 w-4" />
-                    <span>{auction.bidcount || 0} bidders</span>
+                    <span>{auction.issilentauction ? "Silent Auction" : `${auction.bidcount || 0} bidders`}</span>
                   </div>
                 </div>
 
