@@ -325,16 +325,15 @@ export default function AuctionDetailPage() {
   const isAuctionEnded = now > end;
 
   // Update isButtonDisabled to remove participant check for silent auctions
-const isButtonDisabled =
-  !bidAmount ||
-  isNaN(Number(bidAmount)) ||
-  Number(bidAmount) < getMinimumBid() ||
-  user?.email === auction?.createdby ||
-  isAuctionNotStarted ||
-  isAuctionEnded ||
-  (auction?.auctionsubtype === "sealed" &&
-    (auction?.participants?.includes(user?.id ?? "") ?? false));
-
+  const isButtonDisabled =
+    !bidAmount ||
+    isNaN(Number(bidAmount)) ||
+    Number(bidAmount) < getMinimumBid() ||
+    user?.email === auction?.createdby ||
+    isAuctionNotStarted ||
+    isAuctionEnded ||
+    (auction?.auctionsubtype === "sealed" &&
+      (auction?.participants?.includes(user?.id ?? "") ?? false));
 
   return (
     <div className="min-h-screen py-20">
@@ -418,11 +417,12 @@ const isButtonDisabled =
               </CardHeader>
               <CardContent>
                 <Tabs defaultValue="description" className="w-full">
-                  <TabsList className="grid w-full grid-cols-4">
+                  <TabsList className="grid w-full grid-cols-5">
                     <TabsTrigger value="description">Description</TabsTrigger>
                     <TabsTrigger value="specifications">Specs</TabsTrigger>
                     <TabsTrigger value="bids">Bid History</TabsTrigger>
                     <TabsTrigger value="qa">Q&A</TabsTrigger>
+                    <TabsTrigger value="documentation">Documentation</TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="description" className="mt-6">
@@ -538,6 +538,37 @@ const isButtonDisabled =
                         <Button>Submit Question</Button>
                       </div>
                     </div>
+                  </TabsContent>
+
+                  <TabsContent value="documentation" className="mt-6">
+                    {auction.productdocuments && auction.productdocuments.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {auction.productdocuments.map((docUrl, index) => (
+                          <a
+                            key={index}
+                            href={docUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-all"
+                          >
+                            <svg
+                              className="w-6 h-6 text-pink-500"
+                              fill="currentColor"
+                              viewBox="0 0 24 24"
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <path d="M6 2h9l6 6v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm0 2v16h12V9h-5V4H6zm2 2h3v4H8V6zm4 0h3v2h-3V6zm0 3h3v2h-3V9zm-4 0h3v2H8V9z" />
+                              <path d="M10 12h4v2h-4v-2zm0 3h4v2h-4v-2z" />
+                            </svg>
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                              Document {index + 1}
+                            </span>
+                          </a>
+                        ))}
+                      </div>
+                    ) : (
+                      <p>No documentation available</p>
+                    )}
                   </TabsContent>
                 </Tabs>
               </CardContent>
@@ -692,61 +723,60 @@ const isButtonDisabled =
             </Card>
 
             {/* Auction Stats */}
-<Card>
-  <CardHeader>
-    <CardTitle>Auction Details</CardTitle>
-  </CardHeader>
-  <CardContent className="space-y-3 text-sm">
-    {/* Starting Bid */}
-    <div className="flex justify-between">
-      <span>Starting Bid</span>
-      <span className="font-medium">
-        ${auction.startprice?.toLocaleString() || "N/A"}
-      </span>
-    </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Auction Details</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                {/* Starting Bid */}
+                <div className="flex justify-between">
+                  <span>Starting Bid</span>
+                  <span className="font-medium">
+                    ${auction.startprice?.toLocaleString() || "N/A"}
+                  </span>
+                </div>
 
-    {/* Conditional: Sealed Bid or Current Bid */}
-    {auction.auctionsubtype === "sealed" ? (
-      <div className="flex justify-between">
-        <span>Sealed Bid</span>
-        <span className="font-medium">Yes</span>
-      </div>
-    ) : (
-      <div className="flex justify-between">
-        <span>Current Bid</span>
-        <span className="font-medium text-green-600">
-          ${auction.currentbid?.toLocaleString() || "N/A"}
-        </span>
-      </div>
-    )}
+                {/* Conditional: Sealed Bid or Current Bid */}
+                {auction.auctionsubtype === "sealed" ? (
+                  <div className="flex justify-between">
+                    <span>Sealed Bid</span>
+                    <span className="font-medium">Yes</span>
+                  </div>
+                ) : (
+                  <div className="flex justify-between">
+                    <span>Current Bid</span>
+                    <span className="font-medium text-green-600">
+                      ${auction.currentbid?.toLocaleString() || "N/A"}
+                    </span>
+                  </div>
+                )}
 
-    {/* Buy Now Price */}
-    {auction.buyNowPrice && (
-      <div className="flex justify-between">
-        <span>Buy Now Price</span>
-        <span className="font-medium">
-          ${auction.buyNowPrice.toLocaleString()}
-        </span>
-      </div>
-    )}
+                {/* Buy Now Price */}
+                {auction.buyNowPrice && (
+                  <div className="flex justify-between">
+                    <span>Buy Now Price</span>
+                    <span className="font-medium">
+                      ${auction.buyNowPrice.toLocaleString()}
+                    </span>
+                  </div>
+                )}
 
-    {/* Total Bids */}
-    <div className="flex justify-between">
-      <span>Total Bids</span>
-      <span className="font-medium">{auction.bidcount || 0}</span>
-    </div>
+                {/* Total Bids */}
+                <div className="flex justify-between">
+                  <span>Total Bids</span>
+                  <span className="font-medium">{auction.bidcount || 0}</span>
+                </div>
 
-    {/* Time Remaining */}
-    <div className="flex justify-between">
-      <span>Time Remaining</span>
-      <span className="font-medium text-red-600">
-        {auction.timeLeft || "N/A"}
-      </span>
-    </div>
-  </CardContent>
-</Card>
-
-            </div>
+                {/* Time Remaining */}
+                <div className="flex justify-between">
+                  <span>Time Remaining</span>
+                  <span className="font-medium text-red-600">
+                    {auction.timeLeft || "N/A"}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
 
