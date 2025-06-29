@@ -11,7 +11,8 @@ interface Auction {
   id: string;
   productname?: string;
   productdescription?: string;
-  productimages?: string[];
+  productimages?: string[]; // Array of URLs
+  productdocuments?: string[]; // Array of URLs
   startprice?: number;
   currentbid?: number;
   minimumincrement?: number;
@@ -25,10 +26,21 @@ interface Auction {
   currentbidder?: string;
   createdby?: string;
   auctionsubtype?: string;
+  requireddocuments?: string | null;
 }
 
 interface AuctionResponse extends Auction {
   timeLeft?: string;
+}
+
+interface Bid {
+  id: string;
+  auction_id: string;
+  user_id: string;
+  amount: number;
+  created_at: string;
+  productimages: { id: string; url: string }[]; // Array of { id, url } objects
+  productdocuments: { id: string; url: string }[]; // Array of { id, url } objects
 }
 
 export async function GET(
@@ -64,7 +76,12 @@ export async function GET(
         brand,
         model,
         reserveprice,
-        auctionsubtype
+        auctionsubtype,
+        requireddocuments,
+        targetprice,
+        categoryid,
+        subcategoryid,
+        auctiontype
       `)
       .eq("id", id)
       .single();
@@ -74,19 +91,32 @@ export async function GET(
     }
 
     const auction = data as Auction;
+    console.log("Raw auction data before processing:", auction);
 
-    if (auction && !("timeLeft" in auction)) {
-      const start = new Date(auction.scheduledstart || new Date());
-      const duration = auction.auctionduration
-        ? ((d) => ((d.days || 0) * 86400) + ((d.hours || 0) * 3600) + ((d.minutes || 0) * 60))(
-            auction.auctionduration
+    const processedAuction: AuctionResponse = {
+      ...auction,
+      requireddocuments: auction.requireddocuments ? JSON.stringify(auction.requireddocuments) : null,
+    };
+
+    console.log("Processed auction data:", processedAuction);
+
+    if (!("timeLeft" in processedAuction)) {
+      const start = new Date(processedAuction.scheduledstart || new Date());
+      const duration = processedAuction.auctionduration
+        ? ((d) =>
+            ((d.days || 0) * 86400) +
+            ((d.hours || 0) * 3600) +
+            ((d.minutes || 0) * 60))(
+            typeof processedAuction.auctionduration === "string"
+              ? JSON.parse(processedAuction.auctionduration)
+              : processedAuction.auctionduration
           )
         : 0;
       const end = new Date(start.getTime() + duration * 1000);
-      (auction as AuctionResponse).timeLeft = calculateTimeLeft(end);
+      processedAuction.timeLeft = calculateTimeLeft(end);
     }
 
-    return NextResponse.json({ success: true, data: auction as AuctionResponse }, { status: 200 });
+    return NextResponse.json({ success: true, data: processedAuction }, { status: 200 });
   } catch (error) {
     console.error("Route Error:", error);
     return NextResponse.json(
@@ -100,11 +130,27 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
   try {
     const params = await context.params; // Await params to handle promise
     const { id } = params;
-    const body = await request.json();
-    const { user_id, user_email, amount, created_at } = body;
+
+    // Parse the request body (assuming FormData from frontend)
+    const formData = await request.formData();
+    const user_id = formData.get("user_id") as string;
+    const user_email = formData.get("user_email") as string;
+    const amount = parseFloat(formData.get("amount") as string);
+    const created_at = formData.get("created_at") as string;
+
+    // Collect documents and images from FormData
+    const documents: { id: string; url: string }[] = [];
+    const images: { id: string; url: string }[] = [];
+    for (const [key, value] of formData.entries()) {
+      if (key.startsWith("documents[")) {
+        documents.push(JSON.parse(value as string));
+      } else if (key.startsWith("images[")) {
+        images.push(JSON.parse(value as string));
+      }
+    }
 
     // Validate required fields
-    if (!user_id || !user_email || !amount || !created_at) {
+    if (!user_id || !user_email || isNaN(amount) || !created_at) {
       return NextResponse.json(
         { success: false, error: "Missing required fields for bid" },
         { status: 400 }
@@ -114,7 +160,7 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
     // Fetch current auction data
     const { data: auctionData, error: fetchError } = await supabase
       .from("auctions")
-      .select("startprice, currentbid, minimumincrement, percent, bidincrementtype, participants, bidcount, createdby, scheduledstart, auctionduration, auctionsubtype")
+      .select("startprice, currentbid, minimumincrement, percent, bidincrementtype, participants, bidcount, createdby, scheduledstart, auctionduration, auctionsubtype, targetprice")
       .eq("id", id)
       .single();
 
@@ -148,24 +194,45 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
       );
     }
 
-    // Validate bid amount based on auction type
-    let minimumBid = auctionData.startprice || 0;
-    if (auctionData.auctionsubtype !== "sealed") {
-      if (auctionData.bidcount && auctionData.bidcount > 0 && auctionData.currentbid) {
-        if (auctionData.bidincrementtype === "percentage" && auctionData.percent) {
-          minimumBid = auctionData.currentbid * (1 + auctionData.percent / 100);
-        } else if (auctionData.bidincrementtype === "fixed" && auctionData.minimumincrement) {
-          minimumBid = auctionData.currentbid + auctionData.minimumincrement;
-        }
-      }
-      minimumBid = Math.max(minimumBid, auctionData.startprice || 0);
+    // Validate bid amount for reverse auction
+    const currentBid = auctionData.currentbid || auctionData.startprice || 0;
+    const targetPrice = auctionData.targetprice || 0;
+    let minimumDecrement = 0;
+
+    if (auctionData.bidincrementtype === "percentage" && auctionData.percent) {
+      minimumDecrement = currentBid * (auctionData.percent / 100);
+    } else if (auctionData.bidincrementtype === "fixed" && auctionData.minimumincrement) {
+      minimumDecrement = auctionData.minimumincrement;
     }
 
-    if (amount < minimumBid) {
-      return NextResponse.json(
-        { success: false, error: `Bid must be at least $${minimumBid.toLocaleString()}` },
-        { status: 400 }
-      );
+    const minAcceptableBid = currentBid - minimumDecrement;
+
+    if (auctionData.bidcount && auctionData.bidcount > 0) {
+      if (targetPrice > minAcceptableBid) {
+        // Allow bids between targetPrice and currentBid
+        if (amount < targetPrice || amount >= currentBid) {
+          return NextResponse.json(
+            { success: false, error: `Bid must be between $${targetPrice.toLocaleString()} and less than $${currentBid.toLocaleString()}` },
+            { status: 400 }
+          );
+        }
+      } else {
+        // Require bid to be at least targetPrice and less than currentBid - minimumDecrement
+        if (amount < targetPrice || amount >= minAcceptableBid) {
+          return NextResponse.json(
+            { success: false, error: `Bid must be between $${targetPrice.toLocaleString()} and less than $${minAcceptableBid.toLocaleString()}` },
+            { status: 400 }
+          );
+        }
+      }
+    } else {
+      // First bid must be at least targetPrice and less than startprice (if defined) or currentBid
+      if (amount < targetPrice || (auctionData.startprice && amount >= auctionData.startprice)) {
+        return NextResponse.json(
+          { success: false, error: `First bid must be between $${targetPrice.toLocaleString()} and less than $${(auctionData.startprice || currentBid).toLocaleString()}` },
+          { status: 400 }
+        );
+      }
     }
 
     // Check if user is the auction creator
@@ -183,16 +250,23 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
       : auctionData.participants;
     const updatedBidCount = isFirstBid ? (auctionData.bidcount || 0) + 1 : auctionData.bidcount;
 
-    // Insert bid into bids table
+    // Insert bid into bids table with images and documents
     const { error: bidError } = await supabase
       .from("bids")
-      .insert({ auction_id: id, user_id, amount, created_at });
+      .insert({
+        auction_id: id,
+        user_id,
+        amount,
+        created_at,
+        productimages: images,
+        productdocuments: documents,
+      });
 
     if (bidError) {
       return NextResponse.json({ success: false, error: bidError.message }, { status: 400 });
     }
 
-    // Update auction with new bid details
+    // Update auction with new bid details (only URLs for productimages/productdocuments)
     const { data, error: updateError } = await supabase
       .from("auctions")
       .update({
