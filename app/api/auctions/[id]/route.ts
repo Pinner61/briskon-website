@@ -5,7 +5,8 @@ import { createClient } from "@supabase/supabase-js";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
+const isApproximatelyEqual = (a: number, b: number, epsilon = 0.01) =>
+  Math.abs(a - b) < epsilon;
 // Define interfaces
 interface Auction {
   id: string;
@@ -27,6 +28,7 @@ interface Auction {
   createdby?: string;
   auctionsubtype?: string;
   requireddocuments?: string | null;
+  auctiontype?: "forward" | "reverse"; // Added to handle auction type
 }
 
 interface AuctionResponse extends Auction {
@@ -157,10 +159,10 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
       );
     }
 
-    // Fetch current auction data
+    // Fetch current auction data including auctiontype
     const { data: auctionData, error: fetchError } = await supabase
       .from("auctions")
-      .select("startprice, currentbid, minimumincrement, percent, bidincrementtype, participants, bidcount, createdby, scheduledstart, auctionduration, auctionsubtype, targetprice")
+      .select("startprice, currentbid, minimumincrement, percent, bidincrementtype, participants, bidcount, createdby, scheduledstart, auctionduration, auctionsubtype, targetprice, auctiontype")
       .eq("id", id)
       .single();
 
@@ -172,7 +174,7 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
     }
 
     // Check auction status
-    const now = new Date();
+    const now = new Date("2025-06-29T13:28:00+05:00"); // Current time: 01:28 PM PKT
     const start = new Date(auctionData.scheduledstart || now);
     const duration = auctionData.auctionduration
       ? ((d) => ((d.days || 0) * 86400) + ((d.hours || 0) * 3600) + ((d.minutes || 0) * 60))(
@@ -194,44 +196,102 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
       );
     }
 
-    // Validate bid amount for reverse auction
+    // Validate bid amount based on auction type and subtype
     const currentBid = auctionData.currentbid || auctionData.startprice || 0;
     const targetPrice = auctionData.targetprice || 0;
-    let minimumDecrement = 0;
+    let minimumIncrement = 0;
 
     if (auctionData.bidincrementtype === "percentage" && auctionData.percent) {
-      minimumDecrement = currentBid * (auctionData.percent / 100);
+      minimumIncrement = currentBid * (auctionData.percent / 100);
     } else if (auctionData.bidincrementtype === "fixed" && auctionData.minimumincrement) {
-      minimumDecrement = auctionData.minimumincrement;
+      minimumIncrement = auctionData.minimumincrement;
     }
 
-    const minAcceptableBid = currentBid - minimumDecrement;
-
-    if (auctionData.bidcount && auctionData.bidcount > 0) {
-      if (targetPrice > minAcceptableBid) {
-        // Allow bids between targetPrice and currentBid
-        if (amount < targetPrice || amount >= currentBid) {
-          return NextResponse.json(
-            { success: false, error: `Bid must be between $${targetPrice.toLocaleString()} and less than $${currentBid.toLocaleString()}` },
-            { status: 400 }
-          );
+    if (auctionData.auctionsubtype === "sealed") {
+      // Sealed auction rules
+      if (!auctionData.bidcount || auctionData.bidcount === 0) {
+        if (auctionData.auctiontype === "forward") {
+          if (amount < (auctionData.startprice || 0)) {
+            return NextResponse.json(
+              { success: false, error: `First bid must be at least $${(auctionData.startprice || 0).toLocaleString()}` },
+              { status: 400 }
+            );
+          }
+        } else if (auctionData.auctiontype === "reverse") {
+          if (amount < targetPrice) {
+            return NextResponse.json(
+              { success: false, error: `First bid must be at least $${targetPrice.toLocaleString()}` },
+              { status: 400 }
+            );
+          }
         }
       } else {
-        // Require bid to be at least targetPrice and less than currentBid - minimumDecrement
-        if (amount < targetPrice || amount >= minAcceptableBid) {
-          return NextResponse.json(
-            { success: false, error: `Bid must be between $${targetPrice.toLocaleString()} and less than $${minAcceptableBid.toLocaleString()}` },
-            { status: 400 }
-          );
+        // Subsequent bids in sealed auctions follow exact increment
+        if (auctionData.auctiontype === "forward") {
+          const expectedBid = currentBid + minimumIncrement;
+          if (amount !== expectedBid) {
+            return NextResponse.json(
+              { success: false, error: `Bid must be exactly $${expectedBid.toLocaleString()} (current bid + minimum increment)` },
+              { status: 400 }
+            );
+          }
+        } else if (auctionData.auctiontype === "reverse") {
+          const expectedBid = currentBid - minimumIncrement;
+          if (amount !== expectedBid) {
+            return NextResponse.json(
+              { success: false, error: `Bid must be exactly $${expectedBid.toLocaleString()} (current bid - minimum increment)` },
+              { status: 400 }
+            );
+          }
         }
       }
     } else {
-      // First bid must be at least targetPrice and less than startprice (if defined) or currentBid
-      if (amount < targetPrice || (auctionData.startprice && amount >= auctionData.startprice)) {
-        return NextResponse.json(
-          { success: false, error: `First bid must be between $${targetPrice.toLocaleString()} and less than $${(auctionData.startprice || currentBid).toLocaleString()}` },
-          { status: 400 }
-        );
+      // Non-sealed auctions
+      if (!auctionData.bidcount || auctionData.bidcount === 0) {
+        if (auctionData.auctiontype === "forward") {
+          if (amount < (auctionData.startprice || 0)) {
+            return NextResponse.json(
+              { success: false, error: `First bid must be at least $${(auctionData.startprice || 0).toLocaleString()}` },
+              { status: 400 }
+            );
+          }
+        } else if (auctionData.auctiontype === "reverse") {
+          if (amount < targetPrice) {
+            return NextResponse.json(
+              { success: false, error: `First bid must be at least $${targetPrice.toLocaleString()}` },
+              { status: 400 }
+            );
+          }
+        }
+      } else {
+        // Subsequent bids in non-sealed auctions follow exact increment
+        const roundToTwo = (val: number) => Math.round((val + Number.EPSILON) * 100) / 100;
+
+        const roundedAmount = roundToTwo(amount);
+        const roundedCurrentBid = roundToTwo(currentBid);
+        const roundedIncrement = roundToTwo(minimumIncrement);
+        if (auctionData.auctiontype === "forward") {
+          const expectedBid = roundToTwo(roundedCurrentBid + roundedIncrement);
+            console.log("Forward Auction");
+  console.log("Rounded Current Bid:", roundedCurrentBid);
+  console.log("Rounded Increment:", roundedIncrement);
+  console.log("Expected Bid:", expectedBid);
+  console.log("Rounded Amount from user:", roundedAmount);
+          if (roundedAmount !== expectedBid) {
+            return NextResponse.json(
+              { success: false, error: `Bid must be exactly $${expectedBid.toLocaleString()} (current bid + minimum increment)` },
+              { status: 400 }
+            );
+          }
+        } else if (auctionData.auctiontype === "reverse") {
+          const expectedBid = roundToTwo(roundedCurrentBid - roundedIncrement);
+          if (roundedAmount !== expectedBid ) {
+            return NextResponse.json(
+              { success: false, error: `Bid must be exactly $${expectedBid.toLocaleString()} (current bid - minimum increment)` },
+              { status: 400 }
+            );
+          }
+        }
       }
     }
 
@@ -266,7 +326,7 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
       return NextResponse.json({ success: false, error: bidError.message }, { status: 400 });
     }
 
-    // Update auction with new bid details (only URLs for productimages/productdocuments)
+    // Update auction with new bid details
     const { data, error: updateError } = await supabase
       .from("auctions")
       .update({
@@ -285,8 +345,10 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
     return NextResponse.json({ success: true, data: data[0] }, { status: 200 });
   } catch (error) {
     console.error("Bid update error:", error);
+    // Type guard to safely access error.message
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
-      { success: false, error: "Internal server error" },
+      { success: false, error: `Internal server error: ${errorMessage}` },
       { status: 500 }
     );
   }
@@ -294,7 +356,7 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
 
 // Helper function to calculate time left
 function calculateTimeLeft(endDate: Date): string {
-  const now = new Date();
+  const now = new Date("2025-06-29T13:28:00+05:00"); // Current time: 01:28 PM PKT
   const diff = endDate.getTime() - now.getTime();
   if (diff <= 0) return "Auction ended";
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
