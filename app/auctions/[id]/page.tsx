@@ -215,29 +215,40 @@ export default function AuctionDetailPage() {
         alert(`Bid must be at least $${(auction.startprice || 0).toLocaleString()}.`);
         return;
       }
-    } else if (amount < getMinimumBid()) {
-      let minimumIncrementValue = 0;
-      if (auction?.bidincrementtype === "fixed" && auction?.minimumincrement) {
-        minimumIncrementValue = auction.minimumincrement;
-      } else if (auction?.bidincrementtype === "percentage" && auction?.percent && auction?.currentbid) {
-        minimumIncrementValue = auction.currentbid * (auction.percent / 100);
+    } else {
+      const round = (val: number) => Math.round((val + Number.EPSILON) * 100) / 100;
+      const expectedBid = round(getMinimumBid());
+      const userAmount = round(Number(bidAmount));
+
+      if (userAmount !== expectedBid) {
+        let incrementDetails = "";
+
+        if (auction?.bidincrementtype === "fixed" && auction?.minimumincrement) {
+          incrementDetails = `Minimum increment: $${auction.minimumincrement.toLocaleString()} (fixed)`;
+        } else if (auction?.bidincrementtype === "percentage" && auction?.percent && auction?.currentbid) {
+          const increment = round(auction.currentbid * (auction.percent / 100));
+          incrementDetails = `Minimum increment: $${increment.toLocaleString()} (${auction.percent}% of $${auction.currentbid.toLocaleString()})`;
+        }
+
+        alert(`Bid must be exactly $${expectedBid.toLocaleString()} (current bid + increment). ${incrementDetails}`);
+        return;
       }
-      const incrementType = auction?.bidincrementtype || "unknown";
-      alert(`Bid must be at least $${getMinimumBid().toLocaleString()}. Minimum increment is $${minimumIncrementValue.toLocaleString()} (${incrementType} increment).`);
-      return;
     }
 
     try {
       console.log("Placing bid:", { auctionId, userId: user.id, amount });
+      const formData = new FormData();
+      formData.append("user_id", user.id);
+      formData.append("user_email", user.email);
+      formData.append("amount", amount.toString());
+      formData.append("created_at", new Date().toISOString());
+
+      // Optionally append images and documents if available (e.g., from a file input)
+      // Example: if (selectedImages) formData.append("images[0]", selectedImages[0]);
+
       const bidRes = await fetch(`/api/auctions/${auctionId}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          user_id: user.id,
-          user_email: user.email,
-          amount,
-          created_at: new Date().toISOString(),
-        }),
+        body: formData,
       });
       const bidJson = await bidRes.json();
       if (!bidJson.success) throw new Error(bidJson.error || "Failed to record bid");
@@ -256,6 +267,31 @@ export default function AuctionDetailPage() {
       const timeLeft = calculateTimeLeft(end);
 
       setAuction({ ...auctionJson.data, timeLeft });
+
+      // Refetch bid history after successful bid
+      const bidResUpdated = await fetch(`/api/bids/${auctionId}`);
+      const bidJsonUpdated = await bidResUpdated.json();
+      if (bidJsonUpdated.success) {
+        const bids = bidJsonUpdated.data || [];
+        console.log("Fetched Updated Bids (Raw):", bids);
+        const historyPromises = bids.map(async (bid: Bid) => {
+          const profileRes = await fetch(`/api/profiles/${bid.user_id}`);
+          const profileJson = await profileRes.json();
+          console.log("Profile API Response for user_id", bid.user_id, " (Raw):", profileJson);
+          const bidderName = profileJson.success
+            ? `${profileJson.data.fname || ""} ${profileJson.data.lname || ""}`.trim() || profileJson.data.email || bid.user_id
+            : `User ${bid.user_id} (Profile not found)`;
+          return {
+            bidder: bidderName,
+            amount: bid.amount,
+            time: new Date(bid.created_at).toLocaleString("en-US", { hour12: true, hour: "2-digit", minute: "2-digit" }),
+          };
+        });
+        const history = await Promise.all(historyPromises);
+        console.log("Processed Updated Bid History (Raw):", history);
+        setBidHistory(history);
+      }
+
       setBidAmount("");
       alert(`Bid of $${amount.toLocaleString()} placed successfully!`);
     } catch (err) {
@@ -324,16 +360,20 @@ export default function AuctionDetailPage() {
   const isAuctionNotStarted = now < start;
   const isAuctionEnded = now > end;
 
-  // Update isButtonDisabled to remove participant check for silent auctions
+  const isSameAmount = (a: number, b: number, epsilon = 0.01) =>
+    Math.abs(a - b) < epsilon;
+
   const isButtonDisabled =
     !bidAmount ||
     isNaN(Number(bidAmount)) ||
-    Number(bidAmount) < getMinimumBid() ||
+    !isSameAmount(Number(bidAmount), getMinimumBid()) ||
     user?.email === auction?.createdby ||
     isAuctionNotStarted ||
     isAuctionEnded ||
-    (auction?.auctionsubtype === "sealed" &&
-      (auction?.participants?.includes(user?.id ?? "") ?? false));
+    (
+      auction?.auctionsubtype === "sealed" &&
+      (auction?.participants?.includes(user?.id ?? "") ?? false)
+    );
 
   return (
     <div className="min-h-screen py-20">
@@ -588,16 +628,16 @@ export default function AuctionDetailPage() {
               <CardContent className="space-y-4">
                 <div className="text-center">
                   <div className="text-3xl font-bold text-green-600 mb-1 animate-pulse-gow">
-                    {(auction.auctionsubtype === "sealed") 
+                    {(auction.auctionsubtype === "sealed")
                       ? `$${auction.startprice?.toLocaleString() || "N/A"}`
-                      : (auction.issilentauction && auction.bidcount && auction.bidcount > 0) 
+                      : (auction.issilentauction && auction.bidcount && auction.bidcount > 0)
                         ? `$${auction.currentbid?.toLocaleString() || "N/A"}`
                         : `$${auction.startprice?.toLocaleString() || "N/A"}`}
                   </div>
                   <div className="text-sm text-gray-600 dark:text-gray-300">
-                    {(auction.auctionsubtype === "sealed") 
+                    {(auction.auctionsubtype === "sealed")
                       ? "Starting Price"
-                      : (auction.issilentauction && auction.bidcount && auction.bidcount > 0) 
+                      : (auction.issilentauction && auction.bidcount && auction.bidcount > 0)
                         ? "Current Highest Bid"
                         : "Starting Price"}
                   </div>
