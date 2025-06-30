@@ -69,7 +69,7 @@ interface Auction {
   bidcount?: number;
   createdby?: string;
   timeLeft?: string;
-  questions?: { user: string; question: string; answer?: string; time: string }[];
+  questions?: { user: string; question: string; answer: string | null; question_time: string; answer_time: string | null }[];
   issilentauction?: boolean;
   currentbidder?: string;
   percent?: number;
@@ -80,6 +80,7 @@ interface Auction {
   reserveprice?: number;
   auctionsubtype?: string;
   requireddocuments?: string;
+  question_count?: number;
 }
 
 interface Bid {
@@ -306,7 +307,7 @@ const DragDropUpload = ({
 
 // Dummy calculateTimeLeft function
 const calculateTimeLeft = (endDate: Date): string => {
-  const now = new Date(); // 08:13 PM PKT, June 30, 2025
+  const now = new Date(); // 02:31 AM PKT, July 01, 2025
   const diff = endDate.getTime() - now.getTime();
   if (diff <= 0) return "Auction ended";
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -320,19 +321,9 @@ function renderKeyValueBlock(
   fallback: string
 ): React.ReactNode {
   try {
-    let parsed: any[];
-    if (typeof data === "string") {
-      parsed = JSON.parse(data);
-    } else if (typeof data === "object" && data !== null) {
-      parsed = [data];
-      console.warn("Data was an object, treated as single entry:", data);
-    } else {
-      return (
-        <span className="text-gray-600 dark:text-gray-300 ml-4">
-          {fallback}
-        </span>
-      );
-    }
+    const parsed: any[] =
+      typeof data === "string" ? JSON.parse(data) : data ?? [];
+
     if (!Array.isArray(parsed) || parsed.length === 0) {
       return (
         <span className="text-gray-600 dark:text-gray-300 ml-4">
@@ -340,35 +331,32 @@ function renderKeyValueBlock(
         </span>
       );
     }
+
     return (
       <>
-        {parsed.map((attr, index) =>
+        {parsed.map((attr, index) => (
           attr.value ? (
             <div key={index} className="text-gray-600 dark:text-gray-300 ml-4">
               {attr.name}:{" "}
               {attr.type === "color" ? (
-                <span
-                  className="inline-block w-4 h-4 rounded-sm border ml-1"
-                  style={{ backgroundColor: attr.value }}
-                  title={attr.value}
-                ></span>
+                <span className="inline-block w-4 h-4 rounded-sm border ml-1" style={{ backgroundColor: attr.value }} title={attr.value}></span>
               ) : (
                 attr.value
               )}
             </div>
           ) : null
-        )}
+        ))}
       </>
     );
-  } catch (e) {
-    console.error("Failed to parse data in renderKeyValueBlock:", e, "Raw value:", data);
+  } catch {
     return (
       <span className="text-gray-600 dark:text-gray-300 ml-4">
-        Invalid data
+        Invalid attributes data
       </span>
     );
   }
 }
+
 
 export default function ReverseAuctionDetailPage() {
   const params = useParams<{ id: string }>();
@@ -383,6 +371,8 @@ export default function ReverseAuctionDetailPage() {
   const [bidHistory, setBidHistory] = useState<{ bidder: string; amount: number; time: string }[]>([]);
   const [uploadedDocuments, setUploadedDocuments] = useState<UploadedDocument[]>([]);
   const [uploadedImages, setUploadedImages] = useState<UploadedFile[]>([]);
+  const [newQuestion, setNewQuestion] = useState("");
+  const [answerInput, setAnswerInput] = useState<{ index: number; value: string } | null>(null);
 
   const { isAuthenticated, user } = useAuth();
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
@@ -507,8 +497,8 @@ export default function ReverseAuctionDetailPage() {
     }
 
     // ❌ Reject any bid < target price
-    if (amount < targetPrice) {
-      alert(`Bid must be at least $${targetPrice.toLocaleString()}.`);
+    if (amount > targetPrice) {
+      alert(`Bid must be at most $${targetPrice.toLocaleString()}.`);
       return;
     }
 
@@ -540,6 +530,7 @@ export default function ReverseAuctionDetailPage() {
       console.log("Placing bid:", { auctionId, userId, amount });
 
       const formData = new FormData();
+      formData.append("action","bid");
       formData.append("user_id", userId);
       formData.append("user_email", userEmail);
       formData.append("amount", amount.toString());
@@ -649,11 +640,101 @@ export default function ReverseAuctionDetailPage() {
     );
   };
 
+  const handleSubmitQuestion = async () => {
+    if (!isAuthenticated) {
+      setShowLoginPrompt(true);
+      alert("Please log in to ask a question.");
+      return;
+    }
+
+    if (!newQuestion.trim()) {
+      alert("Please enter a question.");
+      return;
+    }
+
+    if (auction?.participants && !auction.participants.some(p => user?.id && p.includes(user!.id!))) {
+      alert("Only registered participants can ask questions.");
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append("action", "postQuestion");
+      formData.append("user_id", user!.id); // Non-null assertion since authenticated
+      formData.append("user_email", user!.email!); // Non-null assertion since authenticated
+      formData.append("question", newQuestion);
+
+      // Debug: Log FormData entries
+      for (let [key, value] of formData.entries()) {
+        console.log("FormData Entry:", key, value);
+      }
+
+      const res = await fetch(`/api/auctions/${auctionId}`, {
+        method: "PUT",
+        body: formData,
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error || "Failed to submit question");
+
+      const updatedAuction: Auction = {
+        ...auction!,
+        questions: json.data.questions,
+        question_count: json.data.question_count,
+      };
+
+      setAuction(updatedAuction);
+      setNewQuestion("");
+      alert("Question submitted successfully!");
+    } catch (err) {
+      console.error("Question submission error:", err);
+      alert(err instanceof Error ? err.message : "An error occurred while submitting question");
+    }
+  };
+
+  const handleSubmitAnswer = async (index: number) => {
+    if (!isAuthenticated || user?.email !== auction?.createdby) {
+      alert("Only the auction creator can answer questions.");
+      return;
+    }
+
+    if (!answerInput || !answerInput.value.trim()) {
+      alert("Please enter an answer.");
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append("action", "answerQuestion");
+      formData.append("user_email", user!.email!); // Non-null assertion since authenticated
+      formData.append("questionIndex", answerInput.index.toString());
+      formData.append("answer", answerInput.value);
+
+      const res = await fetch(`/api/auctions/${auctionId}`, {
+        method: "PUT",
+        body: formData,
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error || "Failed to submit answer");
+
+      const updatedAuction: Auction = {
+        ...auction!,
+        questions: json.data.questions,
+      };
+
+      setAuction(updatedAuction);
+      setAnswerInput(null);
+      alert("Answer submitted successfully!");
+    } catch (err) {
+      console.error("Answer submission error:", err);
+      alert(err instanceof Error ? err.message : "An error occurred while submitting answer");
+    }
+  };
+
   if (loading) return <div className="text-center py-20">Loading...</div>;
   if (error) return <div className="text-center py-20 text-red-600">{error}</div>;
   if (!auction) return <div className="text-center py-20">Auction not found</div>;
 
-  const now = new Date(); // 08:13 PM PKT, June 30, 2025
+  const now = new Date(); // 02:31 AM PKT, July 01, 2025
   const start = new Date(auction.scheduledstart || now);
   const duration = auction.auctionduration
     ? ((d) => ((d.days || 0) * 24 * 60 * 60) + ((d.hours || 0) * 60 * 60) + ((d.minutes || 0) * 60))(
@@ -692,7 +773,7 @@ export default function ReverseAuctionDetailPage() {
     isNaN(bidAmountNumber) ||
     bidAmountNumber < 0 ||
     (bidCount === 0
-      ? bidAmountNumber < targetPrice
+      ? bidAmountNumber > targetPrice
       : !isSameAmount(bidAmountNumber, expectedBid)
     ) ||
     user?.email === auction?.createdby ||
@@ -909,19 +990,38 @@ export default function ReverseAuctionDetailPage() {
                             <div className="mb-2">
                               <span className="font-medium">{qa.user}</span>
                               <span className="text-sm text-gray-600 dark:text-gray-300 ml-2">
-                                {new Date(qa.time).toLocaleString("en-US", { hour12: true, hour: "2-digit", minute: "2-digit" })}
+                                {new Date(qa.question_time).toLocaleString("en-US", { hour12: true, hour: "2-digit", minute: "2-digit" })}
                               </span>
                             </div>
                             <div className="mb-2">
                               <MessageSquare className="h-4 w-4 inline mr-2" />
                               <span>{qa.question}</span>
                             </div>
-                            {qa.answer && (
+                            {qa.answer ? (
                               <div className="ml-6 p-3 bg-blue-50 dark:bg-blue-900/20 rounded">
                                 <CheckCircle className="h-4 w-4 inline mr-2 text-green-600" />
                                 <span>{qa.answer}</span>
+                                <span className="text-sm text-gray-600 dark:text-gray-300 ml-2">
+                                  {new Date(qa.answer_time!).toLocaleString("en-US", { hour12: true, hour: "2-digit", minute: "2-digit" })}
+                                </span>
                               </div>
-                            )}
+                            ) : user?.email === auction?.createdby && !isAuctionEnded ? (
+                              <div>
+                                <Textarea
+                                  placeholder="Type your answer here..."
+                                  value={answerInput?.index === index ? answerInput.value : ""}
+                                  onChange={(e) => setAnswerInput({ index, value: e.target.value })}
+                                  className="mt-2"
+                                />
+                                <Button
+                                  onClick={() => handleSubmitAnswer(index)}
+                                  className="mt-2"
+                                  disabled={!answerInput?.value.trim()}
+                                >
+                                  Submit Answer
+                                </Button>
+                              </div>
+                            ) : null}
                           </div>
                         ))
                       ) : (
@@ -930,8 +1030,19 @@ export default function ReverseAuctionDetailPage() {
 
                       <div className="mt-6">
                         <h4 className="font-semibold mb-3">Ask a Question</h4>
-                        <Textarea placeholder="Type your question here..." className="mb-3" />
-                        <Button>Submit Question</Button>
+                        <Textarea
+                          placeholder="Type your question here..."
+                          value={newQuestion}
+                          onChange={(e) => setNewQuestion(e.target.value)}
+                          className="mb-3"
+                          disabled={isAuctionNotStarted || isAuctionEnded}
+                        />
+                        <Button
+                          onClick={handleSubmitQuestion}
+                          disabled={!newQuestion.trim() || isAuctionNotStarted || isAuctionEnded}
+                        >
+                          Submit Question
+                        </Button>
                       </div>
                     </div>
                   </TabsContent>
@@ -1032,7 +1143,7 @@ export default function ReverseAuctionDetailPage() {
                     <label className="text-sm font-medium">Your Bid Amount</label>
                     <Input
                       type="number"
-                      placeholder={`Minimum: $${getMinimumBid().toLocaleString()}`}
+                      placeholder={`Maximum: $${getMinimumBid().toLocaleString()}`}
                       value={bidAmount}
                       onChange={(e) => setBidAmount(e.target.value)}
                       className="mt-1 transition-smooth"
