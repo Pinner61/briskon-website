@@ -60,8 +60,8 @@ interface Auction {
   auctionduration?: { days?: number; hours?: number; minutes?: number };
   bidders?: number;
   watchers?: number;
-  productimages?: string[]; // Changed to string[] to match API response
-  productdocuments?: string[]; // Changed to string[] to match API response
+  productimages?: string[];
+  productdocuments?: string[];
   productdescription?: string;
   specifications?: string;
   buyNowPrice?: number;
@@ -306,7 +306,7 @@ const DragDropUpload = ({
 
 // Dummy calculateTimeLeft function
 const calculateTimeLeft = (endDate: Date): string => {
-  const now = new Date();
+  const now = new Date(); // 08:13 PM PKT, June 30, 2025
   const diff = endDate.getTime() - now.getTime();
   if (diff <= 0) return "Auction ended";
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -489,7 +489,7 @@ export default function ReverseAuctionDetailPage() {
     const bidCount = auction.bidcount ?? 0;
     const targetPrice = auction.targetprice ?? 0;
     const isSealed = auction.auctionsubtype === "sealed";
-    const isReverse = auction.auctiontype === "reverse";
+    const isSilent = auction.issilentauction || auction.auctionsubtype === "silent";
     const incrementType = auction.bidincrementtype ?? "fixed";
     const userId = user?.id ?? "";
     const userEmail = user?.email ?? "";
@@ -520,19 +520,17 @@ export default function ReverseAuctionDetailPage() {
         ? (currentBid * auction.minimumincrement) / 100
         : auction.minimumincrement ?? 0;
 
-    const expectedBid = isReverse
-      ? currentBid - incrementValue
-      : currentBid + incrementValue;
+    const expectedBid = currentBid - incrementValue; // Reverse auction decrements
 
     const isSameAmount = (a: number, b: number, epsilon = 0.01) =>
       Math.abs(a - b) < epsilon;
 
     // ✅ Sealed auction: bid is valid after previous checks
     // ✅ First bid: any bid ≥ targetPrice allowed
-    if (!isSealed && bidCount > 0 && !isSameAmount(amount, expectedBid)) {
-      const direction = isReverse ? "decrement" : "increment";
+    // ✅ Silent auction: allow multiple bids matching expectedBid
+    if (!isSealed && !isSilent && bidCount > 0 && !isSameAmount(amount, expectedBid)) {
       alert(
-        `Bid must be exactly $${expectedBid.toLocaleString()} (current bid ${isReverse ? "-" : "+"} minimum ${direction}).`
+        `Bid must be exactly $${expectedBid.toLocaleString()} (current bid - minimum decrement).`
       );
       return;
     }
@@ -655,7 +653,7 @@ export default function ReverseAuctionDetailPage() {
   if (error) return <div className="text-center py-20 text-red-600">{error}</div>;
   if (!auction) return <div className="text-center py-20">Auction not found</div>;
 
-  const now = new Date();
+  const now = new Date(); // 08:13 PM PKT, June 30, 2025
   const start = new Date(auction.scheduledstart || now);
   const duration = auction.auctionduration
     ? ((d) => ((d.days || 0) * 24 * 60 * 60) + ((d.hours || 0) * 60 * 60) + ((d.minutes || 0) * 60))(
@@ -686,19 +684,21 @@ export default function ReverseAuctionDetailPage() {
   const bidCount = auction?.bidcount ?? 0;
   const targetPrice = auction?.targetprice ?? 0;
 
+  const isSilent = auction?.issilentauction || auction?.auctionsubtype === "silent";
+  const isSealed = auction?.auctionsubtype === "sealed";
+
   const isButtonDisabled =
     !bidAmount ||
     isNaN(bidAmountNumber) ||
     bidAmountNumber < 0 ||
     (bidCount === 0
-      ? bidAmountNumber < targetPrice // ✅ Allow >= targetPrice for first bid
-      : !isSameAmount(bidAmountNumber, expectedBid) // ❌ Later bids must match expectedBid exactly
+      ? bidAmountNumber < targetPrice
+      : !isSameAmount(bidAmountNumber, expectedBid)
     ) ||
     user?.email === auction?.createdby ||
     isAuctionNotStarted ||
     isAuctionEnded ||
-    (auction?.auctionsubtype === "sealed" &&
-      auction?.participants?.includes(user?.id ?? "")) ||
+    (isSealed && auction?.participants?.includes(user?.id ?? "")) ||
     uploadedDocuments.some((doc) => !doc.files || doc.files.length === 0);
 
   console.log("isButtonDisabled:", isButtonDisabled, {
@@ -721,7 +721,7 @@ export default function ReverseAuctionDetailPage() {
             <Card className="hover-lift transition-smooth">
               <CardContent className="p-0 relative">
                 <Image
-                  src={auction.productimages?.[currentImageIndex] || "/placeholder.svg"} // Updated to use the URL directly
+                  src={auction.productimages?.[currentImageIndex] || "/placeholder.svg"}
                   alt={auction.productname || auction.title || "Auction Item"}
                   width={600}
                   height={400}
@@ -875,7 +875,9 @@ export default function ReverseAuctionDetailPage() {
                   </TabsContent>
 
                   <TabsContent value="bids" className="mt-6">
-                    {!(auction.issilentauction || auction.auctionsubtype === "sealed") && (
+                    {(isSilent || isSealed) ? (
+                      <p className="text-center text-gray-600 dark:text-gray-300">Bid history is not available for this auction type.</p>
+                    ) : (
                       <div className="space-y-3">
                         {bidHistory.length > 0 ? (
                           bidHistory.map((bid, index) => (
@@ -1002,12 +1004,12 @@ export default function ReverseAuctionDetailPage() {
               <CardContent className="space-y-4">
                 <div className="text-center">
                   <div className="text-3xl font-bold text-green-600 mb-1 animate-pulse-gow">
-                    {auction.bidcount === 0 ? "N/A" : `$${auction.currentbid?.toLocaleString() || "N/A"}`}
+                    {isSealed ? `$${auction.targetprice?.toLocaleString() || "N/A"}` : (isSilent || bidCount === 0) ? "N/A" : `$${auction.currentbid?.toLocaleString() || "N/A"}`}
                   </div>
                   <div className="text-sm text-gray-600 dark:text-gray-300">
-                    Current Bid
+                    {isSealed ? "Target Price" : (isSilent) ? "Silent Auction" : (bidCount > 0) ? "Current Bid" : "Target Price"}
                   </div>
-                  {!(auction.issilentauction || auction.auctionsubtype === "sealed") && auction.currentbidder && auction.bidcount && auction.bidcount > 0 && (
+                  {(!isSilent && !isSealed && auction.currentbidder && bidCount > 0) && (
                     <div className="text-sm text-gray-600 dark:text-gray-300">
                       By: {auction.currentbidder}
                     </div>
@@ -1021,7 +1023,7 @@ export default function ReverseAuctionDetailPage() {
                   </div>
                   <div className="flex items-center gap-1 hover-lift">
                     <Users className="h-4 w-4" />
-                    <span>{auction.issilentauction ? "Silent Auction" : `${auction.bidcount || 0} bidders`}</span>
+                    <span>{(isSilent || isSealed) ? "Silent Auction" : `${bidCount || 0} bidders`}</span>
                   </div>
                 </div>
 
@@ -1037,7 +1039,7 @@ export default function ReverseAuctionDetailPage() {
                       disabled={isAuctionNotStarted || isAuctionEnded}
                     />
                   </div>
-                  {auction?.auctionsubtype === "sealed" && auction?.participants?.includes(user?.id ?? "") && (
+                  {isSealed && auction?.participants?.includes(user?.id ?? "") && (
                     <p className="text-sm text-red-600 mt-2">
                       You have already submitted a bid for this auction and cannot bid again.
                     </p>
@@ -1074,7 +1076,7 @@ export default function ReverseAuctionDetailPage() {
                     </>
                   )}
                 </div>
-                {(auction.bidcount ?? 0) > 0 && !(auction.issilentauction || auction.auctionsubtype === "sealed") && (
+                {(bidCount > 0 && !isSilent && !isSealed) && (
                   <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
                     <AlertCircle className="h-4 w-4" />
                     <span>
@@ -1135,16 +1137,21 @@ export default function ReverseAuctionDetailPage() {
                   <span>Target Price</span>
                   <span className="font-medium">${auction.targetprice?.toLocaleString() || "N/A"}</span>
                 </div>
-                {auction.auctionsubtype === "sealed" ? (
+                {isSealed ? (
                   <div className="flex justify-between">
                     <span>Sealed Bid</span>
+                    <span className="font-medium">Yes</span>
+                  </div>
+                ) : isSilent ? (
+                  <div className="flex justify-between">
+                    <span>Silent Auction</span>
                     <span className="font-medium">Yes</span>
                   </div>
                 ) : (
                   <div className="flex justify-between">
                     <span>Current Bid</span>
                     <span className="font-medium text-green-600">
-                      {auction.bidcount === 0 ? "N/A" : `$${auction.currentbid?.toLocaleString() || "N/A"}`}
+                      {bidCount === 0 ? "N/A" : `$${auction.currentbid?.toLocaleString() || "N/A"}`}
                     </span>
                   </div>
                 )}
