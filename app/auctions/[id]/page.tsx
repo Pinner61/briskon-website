@@ -27,7 +27,7 @@ import { ReactNode } from "react";
 
 // Dummy calculateTimeLeft function (replace with actual implementation if needed)
 const calculateTimeLeft = (endDate: Date): string => {
-  const now = new Date();
+  const now = new Date(); // 08:04 PM PKT, June 30, 2025
   const diff = endDate.getTime() - now.getTime();
   if (diff <= 0) return "Auction ended";
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -110,7 +110,7 @@ interface Auction {
   brand?: string;
   model?: string;
   reserveprice?: number;
-  auctionsubtype?: string; // New field for auction subtype (e.g., "sealed")
+  auctionsubtype?: string; // New field for auction subtype (e.g., "sealed", "silent")
 }
 
 // Bid interface
@@ -203,36 +203,28 @@ export default function AuctionDetailPage() {
       return;
     }
 
-    // Check for sealed auction participant restriction only
-    if (auction?.auctionsubtype === "sealed" && auction?.participants?.includes(user.id)) {
-      alert("You have already submitted a bid for this auction and cannot bid again.");
+    // Check for sealed bid restriction (one bid per email)
+    if (auction?.auctionsubtype === "sealed" && auction?.participants?.some(p => user?.email && p.includes(user.email))) {
+      alert("You have already submitted a bid for this sealed auction and cannot bid again.");
       return;
     }
 
     // Minimum bid validation
-    if (auction?.auctionsubtype === "sealed") {
-      if (amount < (auction.startprice || 0)) {
-        alert(`Bid must be at least $${(auction.startprice || 0).toLocaleString()}.`);
-        return;
+    const round = (val: number) => Math.round((val + Number.EPSILON) * 100) / 100;
+    const expectedBid = round(getMinimumBid());
+    const userAmount = round(Number(bidAmount));
+
+    if (userAmount !== expectedBid) {
+      let incrementDetails = "";
+      if (auction?.bidincrementtype === "fixed" && auction?.minimumincrement) {
+        incrementDetails = `Minimum increment: $${auction.minimumincrement.toLocaleString()} (fixed)`;
+      } else if (auction?.bidincrementtype === "percentage" && auction?.percent && auction?.currentbid) {
+        const increment = round(auction.currentbid * (auction.percent / 100));
+        incrementDetails = `Minimum increment: $${increment.toLocaleString()} (${auction.percent}% of $${auction.currentbid.toLocaleString()})`;
       }
-    } else {
-      const round = (val: number) => Math.round((val + Number.EPSILON) * 100) / 100;
-      const expectedBid = round(getMinimumBid());
-      const userAmount = round(Number(bidAmount));
 
-      if (userAmount !== expectedBid) {
-        let incrementDetails = "";
-
-        if (auction?.bidincrementtype === "fixed" && auction?.minimumincrement) {
-          incrementDetails = `Minimum increment: $${auction.minimumincrement.toLocaleString()} (fixed)`;
-        } else if (auction?.bidincrementtype === "percentage" && auction?.percent && auction?.currentbid) {
-          const increment = round(auction.currentbid * (auction.percent / 100));
-          incrementDetails = `Minimum increment: $${increment.toLocaleString()} (${auction.percent}% of $${auction.currentbid.toLocaleString()})`;
-        }
-
-        alert(`Bid must be exactly $${expectedBid.toLocaleString()} (current bid + increment). ${incrementDetails}`);
-        return;
-      }
+      alert(`Bid must be exactly $${expectedBid.toLocaleString()} (current bid + increment). ${incrementDetails}`);
+      return;
     }
 
     try {
@@ -242,9 +234,6 @@ export default function AuctionDetailPage() {
       formData.append("user_email", user.email);
       formData.append("amount", amount.toString());
       formData.append("created_at", new Date().toISOString());
-
-      // Optionally append images and documents if available (e.g., from a file input)
-      // Example: if (selectedImages) formData.append("images[0]", selectedImages[0]);
 
       const bidRes = await fetch(`/api/auctions/${auctionId}`, {
         method: "PUT",
@@ -322,7 +311,7 @@ export default function AuctionDetailPage() {
 
   const getMinimumBid = () => {
     let minimumBid = auction?.startprice || 0;
-    if (auction?.bidcount && auction?.bidcount > 0 && auction?.currentbid && !(auction?.auctionsubtype === "sealed")) {
+    if (auction?.bidcount && auction?.bidcount > 0 && auction?.currentbid) {
       if (auction.bidincrementtype === "percentage" && auction.percent) {
         minimumBid = auction.currentbid * (1 + auction.percent / 100);
       } else if (auction.bidincrementtype === "fixed" && auction.minimumincrement) {
@@ -349,7 +338,7 @@ export default function AuctionDetailPage() {
   if (!auction) return <div className="text-center py-20">Auction not found</div>;
 
   // Calculate auction status
-  const now = new Date();
+  const now = new Date(); // 08:04 PM PKT, June 30, 2025
   const start = new Date(auction.scheduledstart || now);
   const duration = auction.auctionduration
     ? ((d) => ((d.days || 0) * 24 * 60 * 60) + ((d.hours || 0) * 60 * 60) + ((d.minutes || 0) * 60))(
@@ -359,6 +348,14 @@ export default function AuctionDetailPage() {
   const end = new Date(start.getTime() + duration * 1000);
   const isAuctionNotStarted = now < start;
   const isAuctionEnded = now > end;
+
+  console.log("Auction Status:", {
+    isAuctionNotStarted,
+    isAuctionEnded,
+    start,
+    end,
+    now,
+  });
 
   const isSameAmount = (a: number, b: number, epsilon = 0.01) =>
     Math.abs(a - b) < epsilon;
@@ -370,10 +367,9 @@ export default function AuctionDetailPage() {
     user?.email === auction?.createdby ||
     isAuctionNotStarted ||
     isAuctionEnded ||
-    (
-      auction?.auctionsubtype === "sealed" &&
-      (auction?.participants?.includes(user?.id ?? "") ?? false)
-    );
+    (auction?.auctionsubtype === "sealed" && auction?.participants?.some(p => user?.email && p.includes(user.email)));
+
+  const isSilentAuction = auction?.issilentauction || auction?.auctionsubtype === "silent";
 
   return (
     <div className="min-h-screen py-20">
@@ -521,7 +517,9 @@ export default function AuctionDetailPage() {
                   </TabsContent>
 
                   <TabsContent value="bids" className="mt-6">
-                    {!(auction.issilentauction || auction.auctionsubtype === "sealed") && (
+                    {(auction?.auctionsubtype === "sealed" || isSilentAuction) ? (
+                      <p className="text-center text-gray-600 dark:text-gray-300">Bid history is not available for this auction type.</p>
+                    ) : (
                       <div className="space-y-3">
                         {bidHistory.length > 0 ? (
                           bidHistory.map((bid, index) => (
@@ -628,24 +626,26 @@ export default function AuctionDetailPage() {
               <CardContent className="space-y-4">
                 <div className="text-center">
                   <div className="text-3xl font-bold text-green-600 mb-1 animate-pulse-gow">
-                    {(auction.auctionsubtype === "sealed")
+                    {(auction?.auctionsubtype === "sealed")
                       ? `$${auction.startprice?.toLocaleString() || "N/A"}`
-                      : (auction.issilentauction && auction.bidcount && auction.bidcount > 0)
+                      : (isSilentAuction || auction.bidcount && auction.bidcount > 0)
                         ? `$${auction.currentbid?.toLocaleString() || "N/A"}`
                         : `$${auction.startprice?.toLocaleString() || "N/A"}`}
                   </div>
                   <div className="text-sm text-gray-600 dark:text-gray-300">
-                    {(auction.auctionsubtype === "sealed")
+                    {(auction?.auctionsubtype === "sealed")
                       ? "Starting Price"
-                      : (auction.issilentauction && auction.bidcount && auction.bidcount > 0)
-                        ? "Current Highest Bid"
-                        : "Starting Price"}
+                      : (isSilentAuction)
+                        ? "Silent Auction"
+                        : (auction.bidcount && auction.bidcount > 0)
+                          ? "Current Highest Bid"
+                          : "Starting Price"}
                   </div>
-                  {(!auction.issilentauction && auction.auctionsubtype !== "sealed" && auction.currentbidder && auction.bidcount && auction.bidcount > 0) && (
-                    <div className="text-sm text-gray-600 dark:text-gray-300">
-                      By: {auction.currentbidder}
-                    </div>
-                  )}
+{(!isSilentAuction && auction?.auctionsubtype !== "sealed" && auction.currentbidder && auction.bidcount && auction.bidcount > 0) && (
+  <div className="text-sm text-gray-600 dark:text-gray-300">
+    By: {auction.currentbidder}
+  </div>
+)}
                 </div>
 
                 <div className="flex items-center justify-center gap-4 text-sm">
@@ -655,7 +655,7 @@ export default function AuctionDetailPage() {
                   </div>
                   <div className="flex items-center gap-1 hover-lift">
                     <Users className="h-4 w-4" />
-                    <span>{(auction.issilentauction ? "Silent Auction" : `${auction.bidcount || 0} bidders`)}</span>
+                    <span>{(isSilentAuction || auction?.auctionsubtype === "sealed") ? "Silent Auction" : `${auction.bidcount || 0} bidders`}</span>
                   </div>
                 </div>
 
@@ -671,9 +671,9 @@ export default function AuctionDetailPage() {
                       disabled={isAuctionNotStarted || isAuctionEnded}
                     />
                   </div>
-                  {auction?.auctionsubtype === "sealed" && auction?.participants?.includes(user?.id ?? "") && (
+                  {(auction?.auctionsubtype === "sealed" && auction?.participants?.some(p => user?.email && p.includes(user.email))) && (
                     <p className="text-sm text-red-600 mt-2">
-                      You have already submitted a bid for this auction and cannot bid again.
+                      You have already submitted a bid for this sealed auction and cannot bid again.
                     </p>
                   )}
                   <div style={{ width: '100%', display: 'block', position: 'relative', zIndex: 1, pointerEvents: 'auto' }}>
@@ -705,12 +705,12 @@ export default function AuctionDetailPage() {
                     </>
                   )}
                 </div>
-                {!(auction?.auctionsubtype === "sealed") && (
+                {!(isSilentAuction || auction?.auctionsubtype === "sealed") && (
                   <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
                     <AlertCircle className="h-4 w-4" />
                     <span>
                       Minimum bid increment: $
-                      {auction.bidincrementtype === "percentage" && auction.percent && auction.currentbid && !(auction.auctionsubtype === "sealed" || auction.issilentauction)
+                      {auction.bidincrementtype === "percentage" && auction.percent && auction.currentbid
                         ? (auction.currentbid * (auction.percent / 100)).toLocaleString()
                         : auction.minimumincrement?.toLocaleString() || "100"}
                       {" ("}
@@ -776,10 +776,15 @@ export default function AuctionDetailPage() {
                   </span>
                 </div>
 
-                {/* Conditional: Sealed Bid or Current Bid */}
-                {auction.auctionsubtype === "sealed" ? (
+                {/* Conditional: Silent/Sealed Bid or Current Bid */}
+                {(auction?.auctionsubtype === "sealed") ? (
                   <div className="flex justify-between">
                     <span>Sealed Bid</span>
+                    <span className="font-medium">Yes</span>
+                  </div>
+                ) : (isSilentAuction) ? (
+                  <div className="flex justify-between">
+                    <span>Silent Auction</span>
                     <span className="font-medium">Yes</span>
                   </div>
                 ) : (
