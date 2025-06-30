@@ -1143,7 +1143,11 @@ export default function ReverseAuctionDetailPage() {
                     <label className="text-sm font-medium">Your Bid Amount</label>
                     <Input
                       type="number"
-                      placeholder={`Maximum: $${getMinimumBid().toLocaleString()}`}
+                      placeholder={
+    auction?.auctionsubtype === "sealed"
+      ? `Start Price: $${auction.startprice?.toLocaleString() ?? "0"}`
+      : `Maximum: $${targetPrice.toLocaleString()}`
+  }
                       value={bidAmount}
                       onChange={(e) => setBidAmount(e.target.value)}
                       className="mt-1 transition-smooth"
