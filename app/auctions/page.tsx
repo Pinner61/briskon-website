@@ -64,14 +64,14 @@ type AuctionItem = {
 const categories = [
   { value: "all", label: "All Categories" },
   { value: "electronics", label: "Electronics" },
-  { value: "fashion and apparel", label: "Fashion & Apparel" },
-  { value: "jewelry and watches", label: "Jewelry & Watches" },
-  { value: "art and collectibles", label: "Art & Collectibles" },
+  { value: "fashion", label: "Fashion & Apparel" },
+  { value: "jewelry-watches", label: "Jewelry & Watches" },
+  { value: "art-collectibles", label: "Art & Collectibles" },
   { value: "vehicles", label: "Vehicles" },
-  { value: "home and garden", label: "Home & Garden" },
+  { value: "home-garden", label: "Home & Garden" },
   { value: "real-estate", label: "Real Estate" },
-  { value: "sports and recreation", label: "Sports & Recreation" },
-  { value: "books and media", label: "Books & Media" },
+  { value: "sports-recreation", label: "Sports & Recreation" },
+  { value: "books-media", label: "Books & Media" },
   { value: "industrial", label: "Industrial Equipment" },
 ];
 
