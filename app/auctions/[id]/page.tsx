@@ -804,7 +804,11 @@ const isButtonDisabled =
                     <label className="text-sm font-medium">Your Bid Amount</label>
                     <Input
                       type="number"
-                      placeholder={`Minimum: $${getMinimumBid().toLocaleString()}`}
+                      placeholder={
+    auction?.auctionsubtype === "sealed"
+      ? `Start Price: $${auction.startprice?.toLocaleString() ?? "0"}`
+      : `Minimum: $${getMinimumBid().toLocaleString()}`
+  }
                       value={bidAmount}
                       onChange={(e) => setBidAmount(e.target.value)}
                       className="mt-1 transition-smooth"
