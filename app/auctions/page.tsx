@@ -64,13 +64,15 @@ type AuctionItem = {
 const categories = [
   { value: "all", label: "All Categories" },
   { value: "electronics", label: "Electronics" },
-  { value: "fashion", label: "Fashion" },
-  { value: "watches", label: "Watches" },
-  { value: "collectibles", label: "Collectibles" },
+  { value: "fashion and apparel", label: "Fashion & Apparel" },
+  { value: "jewelry and watches", label: "Jewelry & Watches" },
+  { value: "art and collectibles", label: "Art & Collectibles" },
   { value: "vehicles", label: "Vehicles" },
-  { value: "services", label: "Services" },
-  { value: "office-supplies", label: "Office Supplies" },
-  { value: "technology", label: "Technology" },
+  { value: "home and garden", label: "Home & Garden" },
+  { value: "real-estate", label: "Real Estate" },
+  { value: "sports and recreation", label: "Sports & Recreation" },
+  { value: "books and media", label: "Books & Media" },
+  { value: "industrial", label: "Industrial Equipment" },
 ];
 
 const locations = [
@@ -446,7 +448,7 @@ export default function AuctionsPage() {
                 <div className="flex items-center gap-1 mb-3">
                   <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
                   <span className="text-xs text-gray-600">
-                    {auction.rating} • {auction.seller}
+                    Seller: {auction.seller}
                   </span>
                 </div>
               )}
@@ -477,10 +479,10 @@ export default function AuctionsPage() {
 
           {auction.auctiontype === "reverse" && (
             <>
-              {auction.buyer && (
+              {auction.seller && (
                 <div className="flex items-center gap-1 mb-3">
                   <Briefcase className="h-3 w-3 text-blue-500" />
-                  <span className="text-xs text-gray-600">Buyer: {auction.buyer}</span>
+                  <span className="text-xs text-gray-600">Buyer: {auction.seller}</span>
                 </div>
               )}
               <div className="space-y-2 mb-4">
