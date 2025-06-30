@@ -174,7 +174,7 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
     }
 
     // Check auction status
-    const now = new Date("2025-06-29T13:28:00+05:00"); // Current time: 01:28 PM PKT
+    const now = new Date(); // Current time: 01:28 PM PKT
     const start = new Date(auctionData.scheduledstart || now);
     const duration = auctionData.auctionduration
       ? ((d) => ((d.days || 0) * 86400) + ((d.hours || 0) * 3600) + ((d.minutes || 0) * 60))(
@@ -356,7 +356,7 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
 
 // Helper function to calculate time left
 function calculateTimeLeft(endDate: Date): string {
-  const now = new Date("2025-06-29T13:28:00+05:00"); // Current time: 01:28 PM PKT
+  const now = new Date(); // Current time: 01:28 PM PKT
   const diff = endDate.getTime() - now.getTime();
   if (diff <= 0) return "Auction ended";
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
