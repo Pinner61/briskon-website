@@ -27,7 +27,7 @@ import { ReactNode } from "react";
 
 // Dummy calculateTimeLeft function (replace with actual implementation if needed)
 const calculateTimeLeft = (endDate: Date): string => {
-  const now = new Date(); // 08:04 PM PKT, June 30, 2025
+  const now = new Date(); // 11:28 PM PKT, June 30, 2025
   const diff = endDate.getTime() - now.getTime();
   if (diff <= 0) return "Auction ended";
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -77,9 +77,9 @@ function renderKeyValueBlock(
   }
 }
 
-// Updated Auction interface
+// Updated Auction interface with null support for answer and answer_time
 interface Auction {
-  id: string;
+  id: string; // Required
   productname?: string;
   title?: string;
   categoryid?: string;
@@ -101,7 +101,8 @@ interface Auction {
   bidcount?: number;
   createdby?: string; // Email of the user who created the auction
   timeLeft?: string;
-  questions?: { user: string; question: string; answer?: string; time: string }[];
+  questions?: { user: string; question: string; answer: string | null; question_time: string; answer_time: string | null }[];
+  question_count?: number;
   issilentauction?: boolean; // New field to indicate silent auction
   currentbidder?: string; // New field for current highest bidder email
   percent?: number; // New field for percentage increment (if applicable)
@@ -133,6 +134,8 @@ export default function AuctionDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [bidHistory, setBidHistory] = useState<{ bidder: string; amount: number; time: string }[]>([]);
+  const [newQuestion, setNewQuestion] = useState("");
+  const [answerInput, setAnswerInput] = useState<{ index: number; value: string } | null>(null);
 
   const { isAuthenticated, user } = useAuth();
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
@@ -146,7 +149,7 @@ export default function AuctionDetailPage() {
         console.log("Auction API Response (Raw):", json);
         if (!json.success) throw new Error(json.error || "Failed to fetch auction");
         const participants = Array.isArray(json.data.participants) ? json.data.participants : [];
-        const updatedAuction = { ...json.data, participants };
+        const updatedAuction: Auction = { ...json.data, id: auctionId, participants }; // Ensure id is set
         console.log("Processed Auction Data:", updatedAuction);
         setAuction(updatedAuction);
 
@@ -204,7 +207,7 @@ export default function AuctionDetailPage() {
     }
 
     // Check for sealed bid restriction (one bid per email)
-    if (auction?.auctionsubtype === "sealed" && auction?.participants?.some(p => user?.email && p.includes(user.email))) {
+    if (auction?.auctionsubtype === "sealed" && auction?.participants?.some(p => user?.id && p.includes(user.id!))) {
       alert("You have already submitted a bid for this sealed auction and cannot bid again.");
       return;
     }
@@ -213,8 +216,14 @@ export default function AuctionDetailPage() {
     const round = (val: number) => Math.round((val + Number.EPSILON) * 100) / 100;
     const expectedBid = round(getMinimumBid());
     const userAmount = round(Number(bidAmount));
+    if (auction?.auctionsubtype === "sealed") {
 
-    if (userAmount !== expectedBid) {
+      if (userAmount < auction.startprice!) {
+        alert(`Bid must be at least $${auction.startprice?.toLocaleString() || "0"}`);
+        return;
+      }
+    }
+    else if (userAmount !== expectedBid) {
       let incrementDetails = "";
       if (auction?.bidincrementtype === "fixed" && auction?.minimumincrement) {
         incrementDetails = `Minimum increment: $${auction.minimumincrement.toLocaleString()} (fixed)`;
@@ -230,8 +239,9 @@ export default function AuctionDetailPage() {
     try {
       console.log("Placing bid:", { auctionId, userId: user.id, amount });
       const formData = new FormData();
+      formData.append("action", "bid");
       formData.append("user_id", user.id);
-      formData.append("user_email", user.email);
+      formData.append("user_email", user.email!); // Non-null assertion since authenticated
       formData.append("amount", amount.toString());
       formData.append("created_at", new Date().toISOString());
 
@@ -255,7 +265,7 @@ export default function AuctionDetailPage() {
       const end = new Date(start.getTime() + duration * 1000);
       const timeLeft = calculateTimeLeft(end);
 
-      setAuction({ ...auctionJson.data, timeLeft });
+      setAuction({ ...auctionJson.data, id: auctionId, timeLeft });
 
       // Refetch bid history after successful bid
       const bidResUpdated = await fetch(`/api/bids/${auctionId}`);
@@ -333,12 +343,102 @@ export default function AuctionDetailPage() {
     );
   };
 
+const handleSubmitQuestion = async () => {
+  if (!isAuthenticated) {
+    setShowLoginPrompt(true);
+    alert("Please log in to ask a question.");
+    return;
+  }
+
+  if (!newQuestion.trim()) {
+    alert("Please enter a question.");
+    return;
+  }
+
+  if (auction?.participants && !auction.participants.some(p => user?.id && p.includes(user!.id!))) {
+    alert("Only registered participants can ask questions.");
+    return;
+  }
+
+  try {
+    const formData = new FormData();
+    formData.append("action", "postQuestion");
+    formData.append("user_id", user!.id); // Non-null assertion since authenticated
+    formData.append("user_email", user!.email!); // Non-null assertion since authenticated
+    formData.append("question", newQuestion);
+
+    // Debug: Log FormData entries
+    for (let [key, value] of formData.entries()) {
+      console.log("FormData Entry:", key, value);
+    }
+
+    const res = await fetch(`/api/auctions/${auctionId}`, {
+      method: "PUT",
+      body: formData,
+    });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.error || "Failed to submit question");
+
+    const updatedAuction: Auction = {
+      ...auction!,
+      questions: json.data.questions,
+      question_count: json.data.question_count,
+    };
+
+    setAuction(updatedAuction);
+    setNewQuestion("");
+    alert("Question submitted successfully!");
+  } catch (err) {
+    console.error("Question submission error:", err);
+    alert(err instanceof Error ? err.message : "An error occurred while submitting question");
+  }
+};
+
+  const handleSubmitAnswer = async (index: number) => {
+    if (!isAuthenticated || user?.email !== auction?.createdby) {
+      alert("Only the auction creator can answer questions.");
+      return;
+    }
+
+    if (!answerInput || !answerInput.value.trim()) {
+      alert("Please enter an answer.");
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append("action", "answerQuestion");
+      formData.append("user_email", user!.email!); // Non-null assertion since authenticated
+      formData.append("questionIndex", answerInput.index.toString());
+      formData.append("answer", answerInput.value);
+
+      const res = await fetch(`/api/auctions/${auctionId}`, {
+        method: "PUT",
+        body: formData,
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error || "Failed to submit answer");
+
+      const updatedAuction: Auction = {
+        ...auction!,
+        questions: json.data.questions,
+      };
+
+      setAuction(updatedAuction);
+      setAnswerInput(null);
+      alert("Answer submitted successfully!");
+    } catch (err) {
+      console.error("Answer submission error:", err);
+      alert(err instanceof Error ? err.message : "An error occurred while submitting answer");
+    }
+  };
+
   if (loading) return <div className="text-center py-20">Loading...</div>;
   if (error) return <div className="text-center py-20 text-red-600">{error}</div>;
   if (!auction) return <div className="text-center py-20">Auction not found</div>;
 
   // Calculate auction status
-  const now = new Date(); // 08:04 PM PKT, June 30, 2025
+  const now = new Date(); // 11:28 PM PKT, June 30, 2025
   const start = new Date(auction.scheduledstart || now);
   const duration = auction.auctionduration
     ? ((d) => ((d.days || 0) * 24 * 60 * 60) + ((d.hours || 0) * 60 * 60) + ((d.minutes || 0) * 60))(
@@ -360,14 +460,25 @@ export default function AuctionDetailPage() {
   const isSameAmount = (a: number, b: number, epsilon = 0.01) =>
     Math.abs(a - b) < epsilon;
 
-  const isButtonDisabled =
-    !bidAmount ||
-    isNaN(Number(bidAmount)) ||
-    !isSameAmount(Number(bidAmount), getMinimumBid()) ||
-    user?.email === auction?.createdby ||
-    isAuctionNotStarted ||
-    isAuctionEnded ||
-    (auction?.auctionsubtype === "sealed" && auction?.participants?.some(p => user?.email && p.includes(user.email)));
+const bidAmountNumber = Number(bidAmount);
+
+const isButtonDisabled =
+  !bidAmount ||
+  isNaN(bidAmountNumber) ||
+  bidAmountNumber < 0 ||
+  user?.email === auction?.createdby ||
+  isAuctionNotStarted ||
+  isAuctionEnded ||
+  (
+    auction?.auctionsubtype === "sealed"
+      ? (
+          auction?.participants?.some(
+            (p) => user?.id && p.includes(user.id)
+          ) || bidAmountNumber < (auction?.startprice || 0) // ❌ disable if already participated OR bid too low
+        )
+      : !isSameAmount(bidAmountNumber, getMinimumBid()) // ❌ disable if not exactly expected bid
+  );
+
 
   const isSilentAuction = auction?.issilentauction || auction?.auctionsubtype === "silent";
 
@@ -546,34 +657,63 @@ export default function AuctionDetailPage() {
                   <TabsContent value="qa" className="mt-6">
                     <div className="space-y-6">
                       {auction.questions?.length ? (
-                        auction.questions.map((qa: { user: string; question: string; answer?: string; time: string }, index: number) => (
+                        auction.questions.map((qa, index) => (
                           <div key={index} className="border-b pb-4">
                             <div className="mb-2">
                               <span className="font-medium">{qa.user}</span>
                               <span className="text-sm text-gray-600 dark:text-gray-300 ml-2">
-                                {new Date(qa.time).toLocaleString("en-US", { hour12: true, hour: "2-digit", minute: "2-digit" })}
+                                {new Date(qa.question_time).toLocaleString("en-US", { hour12: true, hour: "2-digit", minute: "2-digit" })}
                               </span>
                             </div>
                             <div className="mb-2">
                               <MessageSquare className="h-4 w-4 inline mr-2" />
                               <span>{qa.question}</span>
                             </div>
-                            {qa.answer && (
+                            {qa.answer ? (
                               <div className="ml-6 p-3 bg-blue-50 dark:bg-blue-900/20 rounded">
                                 <CheckCircle className="h-4 w-4 inline mr-2 text-green-600" />
                                 <span>{qa.answer}</span>
+                                <span className="text-sm text-gray-600 dark:text-gray-300 ml-2">
+                                  {new Date(qa.answer_time!).toLocaleString("en-US", { hour12: true, hour: "2-digit", minute: "2-digit" })}
+                                </span>
                               </div>
-                            )}
+                            ) : user?.email === auction?.createdby && !isAuctionEnded ? (
+                              <div>
+                                <Textarea
+                                  placeholder="Type your answer here..."
+                                  value={answerInput?.index === index ? answerInput.value : ""}
+                                  onChange={(e) => setAnswerInput({ index, value: e.target.value })}
+                                  className="mt-2"
+                                />
+                                <Button
+                                  onClick={() => handleSubmitAnswer(index)}
+                                  className="mt-2"
+                                  disabled={!answerInput?.value.trim()}
+                                >
+                                  Submit Answer
+                                </Button>
+                              </div>
+                            ) : null}
                           </div>
                         ))
                       ) : (
                         <p>No questions available</p>
                       )}
-
                       <div className="mt-6">
                         <h4 className="font-semibold mb-3">Ask a Question</h4>
-                        <Textarea placeholder="Type your question here..." className="mb-3" />
-                        <Button>Submit Question</Button>
+                        <Textarea
+                          placeholder="Type your question here..."
+                          value={newQuestion}
+                          onChange={(e) => setNewQuestion(e.target.value)}
+                          className="mb-3"
+                          disabled={isAuctionNotStarted || isAuctionEnded}
+                        />
+                        <Button
+                          onClick={handleSubmitQuestion}
+                          disabled={!newQuestion.trim() || isAuctionNotStarted || isAuctionEnded}
+                        >
+                          Submit Question
+                        </Button>
                       </div>
                     </div>
                   </TabsContent>
@@ -641,11 +781,11 @@ export default function AuctionDetailPage() {
                           ? "Current Highest Bid"
                           : "Starting Price"}
                   </div>
-{(!isSilentAuction && auction?.auctionsubtype !== "sealed" && auction.currentbidder && auction.bidcount && auction.bidcount > 0) && (
-  <div className="text-sm text-gray-600 dark:text-gray-300">
-    By: {auction.currentbidder}
-  </div>
-)}
+                  {(!isSilentAuction && auction?.auctionsubtype !== "sealed" && auction.currentbidder && auction.bidcount && auction.bidcount > 0) && (
+                    <div className="text-sm text-gray-600 dark:text-gray-300">
+                      By: {auction.currentbidder}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex items-center justify-center gap-4 text-sm">
@@ -671,7 +811,7 @@ export default function AuctionDetailPage() {
                       disabled={isAuctionNotStarted || isAuctionEnded}
                     />
                   </div>
-                  {(auction?.auctionsubtype === "sealed" && auction?.participants?.some(p => user?.email && p.includes(user.email))) && (
+                  {(auction?.auctionsubtype === "sealed" && auction?.participants?.some(p => user?.email && p.includes(user!.email!))) && (
                     <p className="text-sm text-red-600 mt-2">
                       You have already submitted a bid for this sealed auction and cannot bid again.
                     </p>
