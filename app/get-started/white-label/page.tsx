@@ -23,8 +23,6 @@ export default function WhiteLabelPage() {
     {
       title: "Starter White Label",
       description: "Quick deployment with essential branding and customization features.",
-      price: "$25,000",
-      timeline: "2-4 weeks",
       features: [
         "Complete brand customization",
         "Custom domain setup",
@@ -38,8 +36,6 @@ export default function WhiteLabelPage() {
     {
       title: "Professional White Label",
       description: "Advanced branding with custom features and enhanced user experience.",
-      price: "$45,000",
-      timeline: "4-6 weeks",
       features: [
         "Everything in Starter",
         "Custom mobile apps",
@@ -54,8 +50,7 @@ export default function WhiteLabelPage() {
     {
       title: "Enterprise White Label",
       description: "Complete white label solution with advanced features and full customization.",
-      price: "$75,000",
-      timeline: "6-8 weeks",
+
       features: [
         "Everything in Professional",
         "Multi-tenant architecture",
@@ -337,8 +332,6 @@ export default function WhiteLabelPage() {
                     {package_.description}
                   </CardDescription>
                   <div className="mt-4">
-                    <span className="text-4xl font-bold text-slate-900 dark:text-slate-100">{package_.price}</span>
-                    <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">{package_.timeline}</div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -455,6 +448,7 @@ export default function WhiteLabelPage() {
       </section>
 
       {/* Success Stories */}
+      {/*}
       <section className="py-20 bg-white dark:bg-slate-900">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
@@ -508,7 +502,7 @@ export default function WhiteLabelPage() {
           </div>
         </div>
       </section>
-
+      */}
       {/* FAQ Section */}
       <section className="py-20 bg-gradient-to-br from-green-50 to-blue-50 dark:from-slate-800 dark:to-slate-700">
         <div className="container mx-auto px-4">
