@@ -12,8 +12,6 @@ export default function OnPremisePage() {
     {
       title: "Standard Deployment",
       description: "Complete auction platform with all core features for enterprise use.",
-      price: "$50,000",
-      timeline: "4-6 weeks",
       features: [
         "Full source code access",
         "Complete platform installation",
@@ -27,8 +25,6 @@ export default function OnPremisePage() {
     {
       title: "Enterprise Deployment",
       description: "Advanced deployment with custom configurations and enterprise features.",
-      price: "$85,000",
-      timeline: "6-8 weeks",
       features: [
         "Everything in Standard",
         "Custom configurations",
@@ -43,8 +39,6 @@ export default function OnPremisePage() {
     {
       title: "High-Availability Deployment",
       description: "Mission-critical deployment with redundancy and disaster recovery.",
-      price: "$120,000",
-      timeline: "8-10 weeks",
       features: [
         "Everything in Enterprise",
         "High-availability architecture",
@@ -284,10 +278,6 @@ export default function OnPremisePage() {
                 <CardHeader className="text-center">
                   <CardTitle className="text-2xl text-slate-900 dark:text-slate-100">{option.title}</CardTitle>
                   <CardDescription className="text-slate-600 dark:text-slate-300">{option.description}</CardDescription>
-                  <div className="mt-4">
-                    <span className="text-4xl font-bold text-slate-900 dark:text-slate-100">{option.price}</span>
-                    <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">{option.timeline}</div>
-                  </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <ul className="space-y-3">
@@ -320,6 +310,7 @@ export default function OnPremisePage() {
       </section>
 
       {/* Technical Specifications */}
+      {/*
       <section className="py-20 bg-white dark:bg-slate-900">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
@@ -352,7 +343,7 @@ export default function OnPremisePage() {
           </div>
         </div>
       </section>
-
+      */}
       {/* Implementation Process */}
       <section className="py-20 bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-800 dark:to-slate-700">
         <div className="container mx-auto px-4">
