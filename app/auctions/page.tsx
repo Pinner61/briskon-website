@@ -23,7 +23,7 @@ import {
   Eye,
   Heart,
   Share2,
-  ArrowUp, // Replaced SortAsc with ArrowUp
+  ArrowUp,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -32,7 +32,7 @@ type AuctionItem = {
   id: string;
   title: string;
   category: string;
-  image: string; // First URL from productimages or placeholder
+  image: string;
   auctiontype: "forward" | "reverse";
   status: "live" | "upcoming" | "closed";
   location: string;
@@ -54,11 +54,11 @@ type AuctionItem = {
   winner?: string;
   views?: number;
   watchers?: number;
-  productimages?: string[]; // Array of Supabase Storage URLs
-  productdocuments?: string[]; // Array of Supabase Storage URLs
-  createdat?: string; // Added for sorting consistency
-  auctionsubtype?: string; // Added to handle sealed auctions
-  ended?: boolean; // Boolean flag for auction end status
+  productimages?: string[];
+  productdocuments?: string[];
+  createdat?: string;
+  auctionsubtype?: string;
+  ended?: boolean;
 };
 
 const categories = [
@@ -108,7 +108,7 @@ function LiveTimer({ time }: { time: string }) {
   useEffect(() => {
     function update() {
       const end = new Date(time);
-      const now = new Date(); // Current time: 07:27 PM PKT, June 30, 2025
+      const now = new Date("2025-07-02T20:10:00+05:00"); // 08:10 PM PKT, July 02, 2025
       const diff = Math.max(0, end.getTime() - now.getTime());
       const hours = Math.floor(diff / (1000 * 60 * 60));
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
@@ -135,7 +135,7 @@ export default function AuctionsPage() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedLocation, setSelectedLocation] = useState("all");
   const [selectedauctiontype, setSelectedauctiontype] = useState("all");
-  const [selectedSubtype, setSelectedSubtype] = useState("all"); // New state for subtype filter
+  const [selectedSubtype, setSelectedSubtype] = useState("all");
   const [sortBy, setSortBy] = useState("ending-soon");
   const [showFilters, setShowFilters] = useState(false);
   const [allAuctionItems, setAllAuctionItems] = useState<AuctionItem[]>([]);
@@ -160,7 +160,7 @@ export default function AuctionsPage() {
               ))(a.auctionduration)
             : 0;
           const end = start ? new Date(start.getTime() + duration * 1000) : null;
-          const now = new Date(); // Current time: 07:27 PM PKT, June 30, 2025
+          const now = new Date("2025-07-02T20:10:00+05:00"); // 08:10 PM PKT, July 02, 2025
 
           let status: "live" | "upcoming" | "closed" = "upcoming";
           if (a.ended === true) {
@@ -261,6 +261,18 @@ export default function AuctionsPage() {
       } else if (sortBy === "most-watched") {
         items.sort((a, b) => (b.watchers || 0) - (a.watchers || 0));
       } else if (sortBy === "newest") {
+        items.sort((a, b) =>
+          a.createdat && b.createdat ? b.createdat.localeCompare(a.createdat) : 0
+        );
+      }
+    } else if (status === "upcoming") {
+      if (sortBy === "newest") {
+        items.sort((a, b) =>
+          a.createdat && b.createdat ? b.createdat.localeCompare(a.createdat) : 0
+        );
+      }
+    } else if (status === "closed") {
+      if (sortBy === "newest") {
         items.sort((a, b) =>
           a.createdat && b.createdat ? b.createdat.localeCompare(a.createdat) : 0
         );
@@ -542,9 +554,24 @@ export default function AuctionsPage() {
   };
 
   const handleLoadMore = (tab: "live" | "upcoming" | "closed") => {
-    if (tab === "live") setVisibleLive((prev) => prev + 8);
-    if (tab === "upcoming") setVisibleUpcoming((prev) => prev + 8);
-    if (tab === "closed") setVisibleClosed((prev) => prev + 8);
+    if (tab === "live") {
+      setVisibleLive((prev) => {
+        const next = prev + 8;
+        return next >= liveAuctions.length ? liveAuctions.length : next;
+      });
+    }
+    if (tab === "upcoming") {
+      setVisibleUpcoming((prev) => {
+        const next = prev + 8;
+        return next >= upcomingAuctions.length ? upcomingAuctions.length : next;
+      });
+    }
+    if (tab === "closed") {
+      setVisibleClosed((prev) => {
+        const next = prev + 8;
+        return next >= closedAuctions.length ? closedAuctions.length : next;
+      });
+    }
   };
 
   return (
@@ -726,7 +753,7 @@ export default function AuctionsPage() {
                 <p className="text-gray-500">Try adjusting your filters or check back later.</p>
               </div>
             )}
-            {liveAuctions.length > 8 && (
+            {visibleLive < liveAuctions.length && (
               <div className="text-center mt-12">
                 <Button
                   variant="outline"
@@ -762,7 +789,7 @@ export default function AuctionsPage() {
                 <p className="text-gray-500">Try adjusting your filters or check back later.</p>
               </div>
             )}
-            {upcomingAuctions.length > 8 && (
+            {visibleUpcoming < upcomingAuctions.length && (
               <div className="text-center mt-12">
                 <Button
                   variant="outline"
@@ -798,7 +825,7 @@ export default function AuctionsPage() {
                 <p className="text-gray-500">Try adjusting your filters or check back later.</p>
               </div>
             )}
-            {closedAuctions.length > 8 && (
+            {visibleClosed < closedAuctions.length && (
               <div className="text-center mt-12">
                 <Button
                   variant="outline"
