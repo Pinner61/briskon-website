@@ -25,8 +25,6 @@ export default function CustomDevelopmentPage() {
     {
       title: "Feature Enhancement",
       description: "Add specific features or modify existing functionality to meet your unique requirements.",
-      price: "$25,000",
-      timeline: "4-6 weeks",
       features: [
         "Custom feature development",
         "UI/UX modifications",
@@ -40,8 +38,6 @@ export default function CustomDevelopmentPage() {
     {
       title: "Complete Custom Solution",
       description: "Full custom auction platform built from the ground up for your specific business model.",
-      price: "$75,000",
-      timeline: "8-12 weeks",
       features: [
         "Custom platform architecture",
         "Bespoke user experience",
@@ -56,8 +52,6 @@ export default function CustomDevelopmentPage() {
     {
       title: "Enterprise Custom Platform",
       description: "Large-scale custom development with advanced features and enterprise-grade architecture.",
-      price: "$150,000+",
-      timeline: "12-16 weeks",
       features: [
         "Everything in Complete Custom",
         "Microservices architecture",
@@ -336,8 +330,6 @@ export default function CustomDevelopmentPage() {
                     {package_.description}
                   </CardDescription>
                   <div className="mt-4">
-                    <span className="text-4xl font-bold text-slate-900 dark:text-slate-100">{package_.price}</span>
-                    <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">{package_.timeline}</div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -454,6 +446,7 @@ export default function CustomDevelopmentPage() {
       </section>
 
       {/* Custom Examples */}
+      {/*}
       <section className="py-20 bg-white dark:bg-slate-900">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
@@ -501,6 +494,7 @@ export default function CustomDevelopmentPage() {
           </div>
         </div>
       </section>
+      */}
 
       {/* FAQ Section */}
       <section className="py-20 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-slate-800 dark:to-slate-700">
