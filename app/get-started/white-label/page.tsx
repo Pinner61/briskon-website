@@ -248,7 +248,7 @@ export default function WhiteLabelPage() {
       <section className="pt-24 pb-16">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto text-center">
-            <Badge className="mb-4 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
+            <Badge className="mb-4 bg-green-100 text-green-700 border border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-700 animate-pulse-glow inline-flex items-center gap-2 transition-transform hover:-translate-y-0.5 hover:bg-green-100 hover:text-green-700 hover:border-green-200">
               <Palette className="h-4 w-4 mr-2" />
               White Label Solution
             </Badge>
