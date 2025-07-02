@@ -64,14 +64,14 @@ type AuctionItem = {
 const categories = [
   { value: "all", label: "All Categories" },
   { value: "electronics", label: "Electronics" },
-  { value: "fashion", label: "Fashion & Apparel" },
-  { value: "jewelry-watches", label: "Jewelry & Watches" },
-  { value: "art-collectibles", label: "Art & Collectibles" },
+  { value: "fashion and apparel", label: "Fashion & Apparel" },
+  { value: "jewelry and watches", label: "Jewelry & Watches" },
+  { value: "art and collectibles", label: "Art & Collectibles" },
   { value: "vehicles", label: "Vehicles" },
-  { value: "home-garden", label: "Home & Garden" },
+  { value: "home and garden", label: "Home & Garden" },
   { value: "real-estate", label: "Real Estate" },
-  { value: "sports-recreation", label: "Sports & Recreation" },
-  { value: "books-media", label: "Books & Media" },
+  { value: "sports and recreation", label: "Sports & Recreation" },
+  { value: "books and media", label: "Books & Media" },
   { value: "industrial", label: "Industrial Equipment" },
 ];
 
@@ -473,6 +473,12 @@ export default function AuctionsPage() {
                     <span className="font-bold text-blue-600">${auction.startingBid.toLocaleString()}</span>
                   </div>
                 )}
+                {auction.status === "closed" && auction.currentBid !== undefined && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-600">Final Bid</span>
+                    <span className="font-bold text-green-600">${auction.bidders === 0 ? "N/A" : `${auction.currentBid.toLocaleString()}`}</span>
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -489,7 +495,7 @@ export default function AuctionsPage() {
                 {auction.targetPrice !== undefined && (
                   <div className="flex justify-between items-center">
                     <span className="text-xs text-gray-600">Target Budget</span>
-                    <span className="font-bold text-blue-600">${auction.targetPrice.toLocaleString()}</span>
+                    <span className="font-bold text-green-600">${auction.targetPrice.toLocaleString()}</span>
                   </div>
                 )}
                 {auction.status === "live" && auction.deadline && (
