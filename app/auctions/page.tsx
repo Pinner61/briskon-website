@@ -108,7 +108,7 @@ function LiveTimer({ time }: { time: string }) {
   useEffect(() => {
     function update() {
       const end = new Date(time);
-      const now = new Date("2025-07-02T20:10:00+05:00"); // 08:10 PM PKT, July 02, 2025
+      const now = new Date(); // 08:10 PM PKT, July 02, 2025
       const diff = Math.max(0, end.getTime() - now.getTime());
       const hours = Math.floor(diff / (1000 * 60 * 60));
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
@@ -160,7 +160,7 @@ export default function AuctionsPage() {
               ))(a.auctionduration)
             : 0;
           const end = start ? new Date(start.getTime() + duration * 1000) : null;
-          const now = new Date("2025-07-02T20:10:00+05:00"); // 08:10 PM PKT, July 02, 2025
+          const now = new Date(); // 08:10 PM PKT, July 02, 2025
 
           let status: "live" | "upcoming" | "closed" = "upcoming";
           if (a.ended === true) {
@@ -216,80 +216,108 @@ export default function AuctionsPage() {
     fetchAuctions();
   }, []);
 
-  const filterAndSortAuctions = (status: "live" | "upcoming" | "closed") => {
-    let items = allAuctionItems.filter((item) => item.status === status);
+const filterAndSortAuctions = (
+  status: "live" | "upcoming" | "closed",
+  auctiontype?: "forward" | "reverse"
+) => {
+  let items = allAuctionItems.filter((item) => {
+    return (
+      item.status === status &&
+      (auctiontype ? item.auctiontype === auctiontype : true)
+    );
+  });
 
-    if (searchTerm) {
-      items = items.filter((item) =>
-        item.title.toLowerCase().includes(searchTerm.toLowerCase())
+  if (searchTerm) {
+    items = items.filter((item) =>
+      item.title.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }
+
+  if (selectedCategory !== "all") {
+    items = items.filter(
+      (item) =>
+        item.category.toLowerCase().replace(/\s+/g, "-") === selectedCategory
+    );
+  }
+
+  if (selectedLocation !== "all") {
+    items = items.filter((item) => item.location === selectedLocation);
+  }
+
+  if (selectedauctiontype !== "all") {
+    items = items.filter((item) => item.auctiontype === selectedauctiontype);
+  }
+
+  if (selectedSubtype !== "all") {
+    items = items.filter((item) => item.auctionsubtype === selectedSubtype);
+  }
+
+  // Sorting
+  if (status === "live") {
+    if (sortBy === "ending-soon") {
+      items.sort((a, b) =>
+        a.timeLeft && b.timeLeft ? a.timeLeft.localeCompare(b.timeLeft) : 0
+      );
+    } else if (sortBy === "price-high") {
+      items.sort(
+        (a, b) =>
+          (b.currentBid || b.targetPrice || 0) - (a.currentBid || a.targetPrice || 0)
+      );
+    } else if (sortBy === "price-low") {
+      items.sort(
+        (a, b) =>
+          (a.currentBid || a.targetPrice || 0) - (b.currentBid || b.targetPrice || 0)
+      );
+    } else if (sortBy === "most-bids") {
+      items.sort(
+        (a, b) => (b.bidders || b.proposals || 0) - (a.bidders || a.proposals || 0)
+      );
+    } else if (sortBy === "most-watched") {
+      items.sort((a, b) => (b.watchers || 0) - (a.watchers || 0));
+    } else if (sortBy === "newest") {
+      items.sort((a, b) =>
+        a.createdat && b.createdat ? b.createdat.localeCompare(a.createdat) : 0
       );
     }
-    if (selectedCategory !== "all") {
-      items = items.filter(
-        (item) => item.category.toLowerCase().replace(/\s+/g, "-") === selectedCategory
+  } else if (status === "upcoming" || status === "closed") {
+    if (sortBy === "newest") {
+      items.sort((a, b) =>
+        a.createdat && b.createdat ? b.createdat.localeCompare(a.createdat) : 0
       );
     }
-    if (selectedLocation !== "all") {
-      items = items.filter((item) => item.location === selectedLocation);
-    }
-    if (selectedauctiontype !== "all") {
-      items = items.filter((item) => item.auctiontype === selectedauctiontype);
-    }
-    if (selectedSubtype !== "all") {
-      items = items.filter((item) => item.auctionsubtype === selectedSubtype);
-    }
+  }
 
-    if (status === "live") {
-      if (sortBy === "ending-soon") {
-        items.sort((a, b) =>
-          a.timeLeft && b.timeLeft ? a.timeLeft.localeCompare(b.timeLeft) : 0
-        );
-      } else if (sortBy === "price-high") {
-        items.sort(
-          (a, b) =>
-            (b.currentBid || b.targetPrice || 0) - (a.currentBid || a.targetPrice || 0)
-        );
-      } else if (sortBy === "price-low") {
-        items.sort(
-          (a, b) =>
-            (a.currentBid || a.targetPrice || 0) - (b.currentBid || b.targetPrice || 0)
-        );
-      } else if (sortBy === "most-bids") {
-        items.sort(
-          (a, b) => (b.bidders || b.proposals || 0) - (a.bidders || a.proposals || 0)
-        );
-      } else if (sortBy === "most-watched") {
-        items.sort((a, b) => (b.watchers || 0) - (a.watchers || 0));
-      } else if (sortBy === "newest") {
-        items.sort((a, b) =>
-          a.createdat && b.createdat ? b.createdat.localeCompare(a.createdat) : 0
-        );
-      }
-    } else if (status === "upcoming") {
-      if (sortBy === "newest") {
-        items.sort((a, b) =>
-          a.createdat && b.createdat ? b.createdat.localeCompare(a.createdat) : 0
-        );
-      }
-    } else if (status === "closed") {
-      if (sortBy === "newest") {
-        items.sort((a, b) =>
-          a.createdat && b.createdat ? b.createdat.localeCompare(a.createdat) : 0
-        );
-      }
-    }
+  return items;
+};
 
-    return items;
-  };
+const liveAuctions = useMemo(
+  () => filterAndSortAuctions("live"),
+  [searchTerm, selectedCategory, selectedLocation, selectedauctiontype, selectedSubtype, sortBy, allAuctionItems]
+);
+const upcomingAuctions = useMemo(
+  () => filterAndSortAuctions("upcoming"),
+  [searchTerm, selectedCategory, selectedLocation, selectedauctiontype, selectedSubtype, sortBy, allAuctionItems]
+);
+const liveForwardAuctions = useMemo(
+  () => filterAndSortAuctions("live", "forward"),
+  [searchTerm, selectedCategory, selectedLocation, selectedauctiontype, selectedSubtype, sortBy, allAuctionItems]
+);
 
-  const liveAuctions = useMemo(
-    () => filterAndSortAuctions("live"),
-    [searchTerm, selectedCategory, selectedLocation, selectedauctiontype, selectedSubtype, sortBy, allAuctionItems]
-  );
-  const upcomingAuctions = useMemo(
-    () => filterAndSortAuctions("upcoming"),
-    [searchTerm, selectedCategory, selectedLocation, selectedauctiontype, selectedSubtype, sortBy, allAuctionItems]
-  );
+const liveReverseAuctions = useMemo(
+  () => filterAndSortAuctions("live", "reverse"),
+  [searchTerm, selectedCategory, selectedLocation, selectedauctiontype, selectedSubtype, sortBy, allAuctionItems]
+);
+
+const upcomingForwardAuctions = useMemo(
+  () => filterAndSortAuctions("upcoming", "forward"),
+  [searchTerm, selectedCategory, selectedLocation, selectedauctiontype, selectedSubtype, sortBy, allAuctionItems]
+);
+
+const upcomingReverseAuctions = useMemo(
+  () => filterAndSortAuctions("upcoming", "reverse"),
+  [searchTerm, selectedCategory, selectedLocation, selectedauctiontype, selectedSubtype, sortBy, allAuctionItems]
+);
+
   const closedAuctions = useMemo(
     () => filterAndSortAuctions("closed"),
     [searchTerm, selectedCategory, selectedLocation, selectedauctiontype, selectedSubtype, sortBy, allAuctionItems]
@@ -591,20 +619,21 @@ export default function AuctionsPage() {
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto mb-8">
             <div className="text-center">
-              <div className="text-2xl font-bold text-brand-600">{liveAuctions.length}</div>
-              <div className="text-sm text-gray-600">Live Auctions</div>
+              <div className="text-2xl font-bold text-brand-600">{liveForwardAuctions.length}</div>
+              <div className="text-sm text-gray-600">Live Forward Auctions</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">{upcomingAuctions.length}</div>
-              <div className="text-sm text-gray-600">Starting Soon</div>
+              <div className="text-2xl font-bold text-green-600">{liveReverseAuctions.length}</div>
+              <div className="text-sm text-gray-600">Live Reverse Auctions</div>
+            </div>
+
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600">{upcomingForwardAuctions.length}</div>
+              <div className="text-sm text-gray-600">Upcoming Forward Auctions</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">1,247</div>
-              <div className="text-sm text-gray-600">Active Users</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">$2.4M</div>
-              <div className="text-sm text-gray-600">Total Volume</div>
+              <div className="text-2xl font-bold text-purple-600">{upcomingReverseAuctions.length}</div>
+              <div className="text-sm text-gray-600">Upcoming Reverse Auctions</div>
             </div>
           </div>
         </div>
