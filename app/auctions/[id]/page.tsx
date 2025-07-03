@@ -795,7 +795,7 @@ const isButtonDisabled =
                   </div>
                   <div className="flex items-center gap-1 hover-lift">
                     <Users className="h-4 w-4" />
-                    <span>{(isSilentAuction || auction?.auctionsubtype === "sealed") ? "Silent Auction" : `${auction.bidcount || 0} bidders`}</span>
+                    <span>{(isSilentAuction || auction?.auctionsubtype === "sealed") ? "Silent Auction" : `${auction.participants?.length || 0} bidders`}</span>
                   </div>
                 </div>
 
