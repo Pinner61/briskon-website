@@ -134,6 +134,7 @@ export async function GET(
 }
 
 export async function PUT(request: Request, context: { params: Promise<{ id: string }> }) {
+  deduplicateAuctionParticipants(); // Call deduplication function
   try {
     const params = await context.params; // Await params to handle promise
     const { id } = params;
@@ -319,11 +320,13 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
       }
 
       // Determine if this is the user's first bid (only restrict for sealed auctions)
-      const isFirstBid = auctionData.auctionsubtype !== "sealed" || !auctionData.participants?.includes(user_id);
-      const updatedParticipants = isFirstBid
-        ? [...(auctionData.participants || []), user_id]
-        : auctionData.participants;
-      const updatedBidCount = isFirstBid ? (auctionData.bidcount || 0) + 1 : auctionData.bidcount;
+const participants = auctionData.participants || [];
+const updatedParticipants = participants.includes(user_id)
+  ? participants
+  : [...participants, user_id];
+
+const updatedBidCount = (auctionData.bidcount || 0) + 1;
+
 
       // Insert bid into bids table with images and documents
       const { error: bidError } = await supabase
@@ -548,4 +551,39 @@ function calculateTimeLeft(endDate: Date): string {
   const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
   return `${days}d ${hours}h ${minutes}m`;
+}
+
+
+async function deduplicateAuctionParticipants() {
+  const { data: auctions, error } = await supabase
+    .from("auctions")
+    .select("id, participants");
+
+  if (error) {
+    console.error("Failed to fetch auctions:", error.message);
+    return;
+  }
+
+  for (const auction of auctions) {
+    const original = auction.participants || [];
+
+    // Remove duplicates using Set
+    const deduplicated = Array.from(new Set(original));
+
+    // Only update if there were duplicates
+    if (deduplicated.length !== original.length) {
+      const { error: updateError } = await supabase
+        .from("auctions")
+        .update({ participants: deduplicated })
+        .eq("id", auction.id);
+
+      if (updateError) {
+        console.error(`Failed to update auction ${auction.id}:`, updateError.message);
+      } else {
+        console.log(`✅ Deduplicated participants for auction ${auction.id}`);
+      }
+    }
+  }
+
+  console.log("🎉 Deduplication complete.");
 }
