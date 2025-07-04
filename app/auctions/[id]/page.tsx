@@ -796,7 +796,7 @@ const isButtonDisabled =
                 <div className="flex items-center justify-center gap-4 text-sm">
                   <div className="flex items-center gap-1 hover-lift">
                     <Clock className="h-4 w-4 text-red-600 animate-bounce-gentle" />
-                    <span className="font-semibold text-red-600">{auction.timeLeft || "N/A"}</span>
+                    <span className="font-semibold text-red-600">{calculateTimeLeft(end) || "N/A"}</span>
                   </div>
                   <div className="flex items-center gap-1 hover-lift">
                     <Users className="h-4 w-4" />
@@ -965,7 +965,7 @@ const isButtonDisabled =
                 <div className="flex justify-between">
                   <span>Time Remaining</span>
                   <span className="font-medium text-red-600">
-                    {auction.timeLeft || "N/A"}
+                    {calculateTimeLeft(end) || "N/A"}
                   </span>
                 </div>
               </CardContent>
