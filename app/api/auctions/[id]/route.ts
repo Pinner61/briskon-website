@@ -22,7 +22,7 @@ interface Auction {
   percent?: number;
   bidincrementtype?: "fixed" | "percentage";
   auctionduration?: { days?: number; hours?: number; minutes?: number };
-  scheduledstart?: string;
+  scheduledstart?: string | null; // Explicitly allow null
   bidcount?: number;
   participants?: string[];
   issilentauction?: boolean;
@@ -109,7 +109,9 @@ export async function GET(
     console.log("Processed auction data:", processedAuction);
 
     if (!("timeLeft" in processedAuction)) {
-      const startIST = DateTime.fromISO(processedAuction.scheduledstart || "").setZone("Asia/Kolkata");
+      const startIST = processedAuction.scheduledstart
+        ? DateTime.fromISO(processedAuction.scheduledstart).setZone("Asia/Kolkata")
+        : DateTime.now().setZone("Asia/Kolkata"); // Fallback to current IST if scheduledstart is null
       const duration = processedAuction.auctionduration
         ? ((d) =>
             ((d.days || 0) * 86400) +
@@ -121,7 +123,8 @@ export async function GET(
           )
         : 0;
       const endIST = startIST.plus({ seconds: duration });
-      processedAuction.timeLeft = calculateTimeLeft(endIST.toUTC().toISO());
+      processedAuction.timeLeft = calculateTimeLeft(endIST.toUTC().toISO() ?? "");
+
     }
 
     return NextResponse.json({ success: true, data: processedAuction }, { status: 200 });
@@ -211,7 +214,9 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
 
       // Check auction status in IST
       const nowIST = DateTime.now().setZone("Asia/Kolkata");
-      const startIST = DateTime.fromISO(auctionData.scheduledstart || "").setZone("Asia/Kolkata");
+      const startIST = auctionData.scheduledstart
+        ? DateTime.fromISO(auctionData.scheduledstart).setZone("Asia/Kolkata")
+        : DateTime.now().setZone("Asia/Kolkata"); // Fallback to current IST if scheduledstart is null
       const duration = auctionData.auctionduration
         ? ((d) => ((d.days || 0) * 86400) + ((d.hours || 0) * 3600) + ((d.minutes || 0) * 60))(
             auctionData.auctionduration
@@ -389,7 +394,9 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
 
       // Check auction status in IST
       const nowIST = DateTime.now().setZone("Asia/Kolkata");
-      const startIST = DateTime.fromISO(auctionData.scheduledstart || "").setZone("Asia/Kolkata");
+      const startIST = auctionData.scheduledstart
+        ? DateTime.fromISO(auctionData.scheduledstart).setZone("Asia/Kolkata")
+        : DateTime.now().setZone("Asia/Kolkata"); // Fallback to current IST if scheduledstart is null
       const duration = auctionData.auctionduration
         ? ((d) => ((d.days || 0) * 86400) + ((d.hours || 0) * 3600) + ((d.minutes || 0) * 60))(
             auctionData.auctionduration
@@ -482,7 +489,9 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
 
       // Check auction status in IST
       const nowIST = DateTime.now().setZone("Asia/Kolkata");
-      const startIST = DateTime.fromISO(auctionData.scheduledstart || "").setZone("Asia/Kolkata");
+      const startIST = auctionData.scheduledstart
+        ? DateTime.fromISO(auctionData.scheduledstart).setZone("Asia/Kolkata")
+        : DateTime.now().setZone("Asia/Kolkata"); // Fallback to current IST if scheduledstart is null
       const duration = auctionData.auctionduration
         ? ((d) => ((d.days || 0) * 86400) + ((d.hours || 0) * 3600) + ((d.minutes || 0) * 60))(
             auctionData.auctionduration
