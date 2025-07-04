@@ -26,15 +26,19 @@ import { LoginPrompt } from "@/components/login-prompt";
 import { ReactNode } from "react";
 
 // Dummy calculateTimeLeft function (replace with actual implementation if needed)
-const calculateTimeLeft = (endDate: Date): string => {
-  const now = new Date(); // 11:28 PM PKT, June 30, 2025
-  const diff = endDate.getTime() - now.getTime();
+const calculateTimeLeft = (endDateUTC: Date): string => {
+  const nowUTC = new Date(); // Already in UTC internally
+  const diff = endDateUTC.getTime() - nowUTC.getTime();
+
   if (diff <= 0) return "Auction ended";
+
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
   const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
   return `${days}d ${hours}h ${minutes}m`;
 };
+
 
 function renderKeyValueBlock(
   data: string | Record<string, any> | undefined,
