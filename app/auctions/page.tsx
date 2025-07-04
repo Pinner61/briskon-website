@@ -27,7 +27,8 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { DateTime } from "luxon"; // Import luxon for timezone handling
+import { DateTime } from "luxon";
+import { time } from "console";
 
 type AuctionItem = {
   id: string;
@@ -104,13 +105,22 @@ const subtypes = [
   { value: "dutch", label: "Dutch" },
   { value: "english", label: "English" },
 ];
-
 function LiveTimer({ time }: { time: string }) {
-  const [timeLeft, setTimeLeft] = useState("");
+  const [timeLeft, setTimeLeft] = useState("0m 0s");
 
   useEffect(() => {
-    function update() {
-      const endIST = DateTime.fromISO(time).setZone("Asia/Kolkata");
+    const update = () => {
+      if (!time) {
+        setTimeLeft("0m 0s");
+        return;
+      }
+
+      const endIST = DateTime.fromISO(time, { zone: "Asia/Kolkata" });
+      if (!endIST.isValid) {
+        setTimeLeft("Invalid time");
+        return;
+      }
+
       const nowIST = DateTime.now().setZone("Asia/Kolkata");
       const diff = Math.max(0, endIST.toMillis() - nowIST.toMillis());
 
@@ -119,10 +129,12 @@ function LiveTimer({ time }: { time: string }) {
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
-      setTimeLeft(
-        `${days > 0 ? days + "d " : ""}${hours > 0 ? hours + "h " : ""}${minutes}m ${seconds}s`
-      );
-    }
+      const formatted = `${days > 0 ? `${days}d ` : ""}${
+        hours > 0 ? `${hours}h ` : ""
+      }${minutes}m ${seconds}s`;
+
+      setTimeLeft(formatted);
+    };
 
     update();
     const interval = setInterval(update, 1000);
@@ -137,6 +149,7 @@ function LiveTimer({ time }: { time: string }) {
   );
 }
 
+
 export default function AuctionsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -149,34 +162,62 @@ export default function AuctionsPage() {
   const [visibleLive, setVisibleLive] = useState(8);
   const [visibleUpcoming, setVisibleUpcoming] = useState(8);
   const [visibleClosed, setVisibleClosed] = useState(8);
+useEffect(() => {
+  const fetchAuctions = async () => {
+    try {
+      const res = await fetch("/api/auctions");
+      const json = await res.json();
+      if (!json.success) return;
 
-  useEffect(() => {
-    const fetchAuctions = async () => {
-      try {
-        const res = await fetch("/api/auctions");
-        const json = await res.json();
-        if (!json.success) return;
+      const updateStatuses = () => {
+        const nowIST = DateTime.now().setZone("Asia/Kolkata");
 
         const mapped: AuctionItem[] = (json.data || []).map((a: any) => {
-          const startIST = a.scheduledstart ? DateTime.fromISO(a.scheduledstart).setZone("Asia/Kolkata") : null;
+          const startUTC = a.scheduledstart ? DateTime.fromISO(a.scheduledstart, { zone: "utc" }) : null;
+          const startIST = startUTC ? startUTC.setZone("Asia/Kolkata") : null;
+
           const duration = a.auctionduration
-            ? ((durationObj) => (
-                ((durationObj.days || 0) * 24 * 60 * 60) +
-                ((durationObj.hours || 0) * 60 * 60) +
-                ((durationObj.minutes || 0) * 60)
-              ))(a.auctionduration)
+            ? ((d: any) =>
+                ((d.days || 0) * 86400) +
+                ((d.hours || 0) * 3600) +
+                ((d.minutes || 0) * 60))(a.auctionduration)
             : 0;
+
           const endIST = startIST ? startIST.plus({ seconds: duration }) : null;
-          const nowIST = DateTime.now().setZone("Asia/Kolkata");
+
+          console.log(
+            "Debug - Auction ID:", a.id,
+            "Start UTC:", a.scheduledstart,
+            "Start IST:", startIST?.toString(),
+            "End IST:", endIST?.toString(),
+            "Now IST:", nowIST.toString()
+          );
 
           let status: "live" | "upcoming" | "closed" = "upcoming";
           if (a.ended === true) {
             status = "closed";
           } else if (startIST && endIST) {
             if (nowIST < startIST) status = "upcoming";
-            else if (nowIST >= startIST && nowIST < endIST) status = "live";
-            else if (nowIST >= endIST) status = "closed";
+            else if (nowIST >= startIST && nowIST <= endIST) status = "live";
+            else if (nowIST > endIST) status = "closed";
           }
+
+          // Calculate timeLeft or startsIn
+        const timeDiff = (target: DateTime) => {
+          const diff = target.diff(nowIST, ["days", "hours", "minutes"]);
+          if (!diff.isValid) return "Invalid time";
+
+          const { days = 0, hours = 0, minutes = 0 } = diff.toObject();
+
+          if (days <= 0 && hours <= 0 && minutes <= 0) return "0d 0h 0m";
+
+        return `${Math.floor(days)}d ${Math.floor(hours)}h ${Math.floor(minutes)}m`;
+        };
+
+
+          const timeLeft = status === "live" && endIST ? timeDiff(endIST) : undefined;
+          console.log("Debug - Auction ID:", a.id, "Status:", status, "Time Left:", timeLeft);
+          const startsIn = status === "upcoming" && startIST ? timeDiff(startIST) : undefined;
 
           return {
             id: a.id,
@@ -193,7 +234,8 @@ export default function AuctionsPage() {
             featured: a.featured || false,
             verified: a.verified || false,
             currentBid: a.currentbid ?? undefined,
-            timeLeft: endIST && status === "live" ? endIST.toUTC().toISO() : "",
+            timeLeft: endIST?.toISO(),      // ✅ ADD this for LiveTimer
+            startsIn: startIST?.toISO(),
             bidders: Array.isArray(a.participants) ? a.participants.length : undefined,
             seller: a.createdby || "",
             rating: a.rating ?? undefined,
@@ -202,7 +244,7 @@ export default function AuctionsPage() {
             proposals: a.proposals ?? undefined,
             buyer: a.buyer || "",
             startingBid: a.startprice ?? undefined,
-            startsIn: startIST && status === "upcoming" ? startIST.toUTC().toISO() : "",
+
             finalBid: a.finalbid ?? undefined,
             endedAgo: "",
             winner: a.winner || "",
@@ -217,13 +259,32 @@ export default function AuctionsPage() {
             auctionduration: a.auctionduration || { days: 0, hours: 0, minutes: 0 },
           };
         });
+
         setAllAuctionItems(mapped);
-      } catch (error) {
-        console.error("Failed to fetch auctions:", error);
-      }
-    };
-    fetchAuctions();
-  }, []);
+      };
+
+      updateStatuses();
+      const interval = setInterval(updateStatuses, 60000); // update every minute
+      return () => clearInterval(interval);
+    } catch (error) {
+      console.error("Failed to fetch auctions:", error);
+    }
+  };
+
+  fetchAuctions();
+}, []);
+
+  const calculateTimeLeft = (endTimeISO: string, startTimeISO: string): string => {
+    const endIST = DateTime.fromISO(endTimeISO).setZone("Asia/Kolkata");
+    const nowIST = DateTime.fromISO(startTimeISO).setZone("Asia/Kolkata");
+    const diff = endIST.diff(nowIST, ["days", "hours", "minutes", "seconds"]).toObject();
+
+    if ((diff.days ?? 0) <= 0 && (diff.hours ?? 0) <= 0 && (diff.minutes ?? 0) <= 0 && (diff.seconds ?? 0) <= 0) {
+      return "0m 0s";
+    }
+
+    return `${diff.days ?? 0}d ${diff.hours ?? 0}h ${diff.minutes ?? 0}m`;
+  };
 
   const filterAndSortAuctions = (
     status: "live" | "upcoming" | "closed",
@@ -261,7 +322,6 @@ export default function AuctionsPage() {
       items = items.filter((item) => item.auctionsubtype === selectedSubtype);
     }
 
-    // Sorting
     if (status === "live") {
       if (sortBy === "ending-soon") {
         items.sort((a, b) =>
@@ -311,22 +371,18 @@ export default function AuctionsPage() {
     () => filterAndSortAuctions("live", "forward"),
     [searchTerm, selectedCategory, selectedLocation, selectedauctiontype, selectedSubtype, sortBy, allAuctionItems]
   );
-
   const liveReverseAuctions = useMemo(
     () => filterAndSortAuctions("live", "reverse"),
     [searchTerm, selectedCategory, selectedLocation, selectedauctiontype, selectedSubtype, sortBy, allAuctionItems]
   );
-
   const upcomingForwardAuctions = useMemo(
     () => filterAndSortAuctions("upcoming", "forward"),
     [searchTerm, selectedCategory, selectedLocation, selectedauctiontype, selectedSubtype, sortBy, allAuctionItems]
   );
-
   const upcomingReverseAuctions = useMemo(
     () => filterAndSortAuctions("upcoming", "reverse"),
     [searchTerm, selectedCategory, selectedLocation, selectedauctiontype, selectedSubtype, sortBy, allAuctionItems]
   );
-
   const closedAuctions = useMemo(
     () => filterAndSortAuctions("closed"),
     [searchTerm, selectedCategory, selectedLocation, selectedauctiontype, selectedSubtype, sortBy, allAuctionItems]
@@ -635,7 +691,6 @@ export default function AuctionsPage() {
               <div className="text-2xl font-bold text-green-600">{liveReverseAuctions.length}</div>
               <div className="text-sm text-gray-600">Live Reverse Auctions</div>
             </div>
-
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-600">{upcomingForwardAuctions.length}</div>
               <div className="text-sm text-gray-600">Upcoming Forward Auctions</div>
