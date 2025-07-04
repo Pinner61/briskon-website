@@ -459,6 +459,7 @@ const handleSubmitQuestion = async () => {
     start,
     end,
     now,
+    timeLeft: calculateTimeLeft(end),
   });
 
   const isSameAmount = (a: number, b: number, epsilon = 0.01) =>
