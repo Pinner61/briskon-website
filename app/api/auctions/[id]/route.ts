@@ -124,7 +124,6 @@ export async function GET(
         : 0;
       const endIST = startIST.plus({ seconds: duration });
       processedAuction.timeLeft = calculateTimeLeft(endIST.toUTC().toISO() ?? "");
-
     }
 
     return NextResponse.json({ success: true, data: processedAuction }, { status: 200 });
@@ -212,8 +211,8 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
         );
       }
 
-      // Check auction status in IST
-      const nowIST = DateTime.now().setZone("Asia/Kolkata");
+      // Check auction status in IST with debug logging
+      const nowIST = DateTime.now().setZone("Asia/Kolkata", { keepLocalTime: false }); // Force IST without local offset
       const startIST = auctionData.scheduledstart
         ? DateTime.fromISO(auctionData.scheduledstart).setZone("Asia/Kolkata")
         : DateTime.now().setZone("Asia/Kolkata"); // Fallback to current IST if scheduledstart is null
@@ -223,6 +222,10 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
           )
         : 0;
       const endIST = startIST.plus({ seconds: duration });
+
+      console.log("Time Check - Now IST:", nowIST.toISO());
+      console.log("Time Check - Start IST:", startIST.toISO());
+      console.log("Time Check - End IST:", endIST.toISO());
 
       if (nowIST < startIST) {
         console.log({ nowIST: nowIST.toISO(), startIST: startIST.toISO(), endIST: endIST.toISO() });
@@ -274,7 +277,7 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
               return NextResponse.json(
                 { success: false, error: `First bid must be at least $${(auctionData.startprice || 0).toLocaleString()}` },
                 { status: 400 }
-              );
+            );
             }
           } else if (auctionData.auctiontype === "reverse") {
             if (amount > targetPrice) {
@@ -392,8 +395,8 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
         );
       }
 
-      // Check auction status in IST
-      const nowIST = DateTime.now().setZone("Asia/Kolkata");
+      // Check auction status in IST with debug logging
+      const nowIST = DateTime.now().setZone("Asia/Kolkata", { keepLocalTime: false });
       const startIST = auctionData.scheduledstart
         ? DateTime.fromISO(auctionData.scheduledstart).setZone("Asia/Kolkata")
         : DateTime.now().setZone("Asia/Kolkata"); // Fallback to current IST if scheduledstart is null
@@ -403,6 +406,10 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
           )
         : 0;
       const endIST = startIST.plus({ seconds: duration });
+
+      console.log("Time Check - Now IST:", nowIST.toISO());
+      console.log("Time Check - Start IST:", startIST.toISO());
+      console.log("Time Check - End IST:", endIST.toISO());
 
       if (nowIST < startIST || nowIST > endIST) {
         return NextResponse.json(
@@ -487,8 +494,8 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
         );
       }
 
-      // Check auction status in IST
-      const nowIST = DateTime.now().setZone("Asia/Kolkata");
+      // Check auction status in IST with debug logging
+      const nowIST = DateTime.now().setZone("Asia/Kolkata", { keepLocalTime: false });
       const startIST = auctionData.scheduledstart
         ? DateTime.fromISO(auctionData.scheduledstart).setZone("Asia/Kolkata")
         : DateTime.now().setZone("Asia/Kolkata"); // Fallback to current IST if scheduledstart is null
@@ -498,6 +505,10 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
           )
         : 0;
       const endIST = startIST.plus({ seconds: duration });
+
+      console.log("Time Check - Now IST:", nowIST.toISO());
+      console.log("Time Check - Start IST:", startIST.toISO());
+      console.log("Time Check - End IST:", endIST.toISO());
 
       if (nowIST > endIST) {
         return NextResponse.json(
@@ -552,8 +563,9 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
 }
 
 // Helper function to calculate time left in IST
-const calculateTimeLeft = (endDateUTC: string): string => {
-  const nowIST = DateTime.now().setZone("Asia/Kolkata");
+const calculateTimeLeft = (endDateUTC: string | null): string => {
+  if (!endDateUTC) return "Auction ended or time not set";
+  const nowIST = DateTime.now().setZone("Asia/Kolkata", { keepLocalTime: false });
   const endIST = DateTime.fromISO(endDateUTC).setZone("Asia/Kolkata");
 
   const diff = endIST.diff(nowIST, ["days", "hours", "minutes"]).toObject();
