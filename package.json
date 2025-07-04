@@ -63,6 +63,7 @@
   },
   "devDependencies": {
     "@types/node": "^22",
+    "@types/luxon": "^3.6.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "postcss": "^8.5",
