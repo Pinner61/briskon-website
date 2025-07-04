@@ -108,15 +108,19 @@ function LiveTimer({ time }: { time: string }) {
   useEffect(() => {
     function update() {
       const end = new Date(time);
-      const now = new Date(); // 08:10 PM PKT, July 02, 2025
+      const now = new Date();
       const diff = Math.max(0, end.getTime() - now.getTime());
-      const hours = Math.floor(diff / (1000 * 60 * 60));
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
       setTimeLeft(
-        `${hours > 0 ? hours + "h " : ""}${minutes}m ${seconds}s`
+        `${days > 0 ? days + "d " : ""}${hours > 0 ? hours + "h " : ""}${minutes}m ${seconds}s`
       );
     }
+
     update();
     const interval = setInterval(update, 1000);
     return () => clearInterval(interval);
@@ -129,6 +133,7 @@ function LiveTimer({ time }: { time: string }) {
     </span>
   );
 }
+
 
 export default function AuctionsPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -160,7 +165,7 @@ export default function AuctionsPage() {
               ))(a.auctionduration)
             : 0;
           const end = start ? new Date(start.getTime() + duration * 1000) : null;
-          const now = new Date(); // 08:10 PM PKT, July 02, 2025
+          const now = new Date(); 
 
           let status: "live" | "upcoming" | "closed" = "upcoming";
           if (a.ended === true) {
@@ -187,7 +192,7 @@ export default function AuctionsPage() {
             verified: a.verified || false,
             currentBid: a.currentbid ?? undefined,
             timeLeft: end && status === "live" ? end.toISOString() : "",
-            bidders: a.bidcount ?? undefined,
+            bidders: Array.isArray(a.participants) ? a.participants.length : undefined,
             seller: a.createdby || "",
             rating: a.rating ?? undefined,
             targetPrice: a.targetprice ?? undefined,
