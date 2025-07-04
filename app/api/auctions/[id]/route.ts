@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { DateTime } from "luxon"; // Import luxon for timezone handling
 
 // Initialize Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -108,7 +109,7 @@ export async function GET(
     console.log("Processed auction data:", processedAuction);
 
     if (!("timeLeft" in processedAuction)) {
-      const start = new Date(processedAuction.scheduledstart || new Date());
+      const startIST = DateTime.fromISO(processedAuction.scheduledstart || "").setZone("Asia/Kolkata");
       const duration = processedAuction.auctionduration
         ? ((d) =>
             ((d.days || 0) * 86400) +
@@ -119,8 +120,8 @@ export async function GET(
               : processedAuction.auctionduration
           )
         : 0;
-      const end = new Date(start.getTime() + duration * 1000);
-      processedAuction.timeLeft = calculateTimeLeft(end);
+      const endIST = startIST.plus({ seconds: duration });
+      processedAuction.timeLeft = calculateTimeLeft(endIST.toUTC().toISO());
     }
 
     return NextResponse.json({ success: true, data: processedAuction }, { status: 200 });
@@ -208,24 +209,24 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
         );
       }
 
-      // Check auction status
-      const now = new Date(); 
-      const start = new Date(auctionData.scheduledstart || now);
+      // Check auction status in IST
+      const nowIST = DateTime.now().setZone("Asia/Kolkata");
+      const startIST = DateTime.fromISO(auctionData.scheduledstart || "").setZone("Asia/Kolkata");
       const duration = auctionData.auctionduration
         ? ((d) => ((d.days || 0) * 86400) + ((d.hours || 0) * 3600) + ((d.minutes || 0) * 60))(
             auctionData.auctionduration
           )
         : 0;
-      const end = new Date(start.getTime() + duration * 1000);
+      const endIST = startIST.plus({ seconds: duration });
 
-      if (now < start) {
-        console.log({now, start, end});
+      if (nowIST < startIST) {
+        console.log({ nowIST: nowIST.toISO(), startIST: startIST.toISO(), endIST: endIST.toISO() });
         return NextResponse.json(
-          { success: false, error: "Auction has not started yet " },
+          { success: false, error: "Auction has not started yet" },
           { status: 400 }
         );
       }
-      if (now > end) {
+      if (nowIST > endIST) {
         return NextResponse.json(
           { success: false, error: "Auction has ended" },
           { status: 400 }
@@ -245,22 +246,21 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
 
       if (auctionData.auctionsubtype === "sealed") {
         // Sealed auction rules
-        
-          if (auctionData.auctiontype === "forward") {
-            if (amount < (auctionData.startprice || 0)) {
-              return NextResponse.json(
-                { success: false, error: `Bid must be at least $${(auctionData.startprice || 0).toLocaleString()}` },
-                { status: 400 }
-              );
-            }
-          } else if (auctionData.auctiontype === "reverse") {
-            if (amount > targetPrice) {
-              return NextResponse.json(
-                { success: false, error: `Bid must be at most $${targetPrice.toLocaleString()}` },
-                { status: 400 }
-              );
-            }
+        if (auctionData.auctiontype === "forward") {
+          if (amount < (auctionData.startprice || 0)) {
+            return NextResponse.json(
+              { success: false, error: `Bid must be at least $${(auctionData.startprice || 0).toLocaleString()}` },
+              { status: 400 }
+            );
           }
+        } else if (auctionData.auctiontype === "reverse") {
+          if (amount > targetPrice) {
+            return NextResponse.json(
+              { success: false, error: `Bid must be at most $${targetPrice.toLocaleString()}` },
+              { status: 400 }
+            );
+          }
+        }
       } else {
         // Non-sealed auctions
         if (!auctionData.bidcount || auctionData.bidcount === 0) {
@@ -321,13 +321,12 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
       }
 
       // Determine if this is the user's first bid (only restrict for sealed auctions)
-const participants = auctionData.participants || [];
-const updatedParticipants = participants.includes(user_id)
-  ? participants
-  : [...participants, user_id];
+      const participants = auctionData.participants || [];
+      const updatedParticipants = participants.includes(user_id)
+        ? participants
+        : [...participants, user_id];
 
-const updatedBidCount = (auctionData.bidcount || 0) + 1;
-
+      const updatedBidCount = (auctionData.bidcount || 0) + 1;
 
       // Insert bid into bids table with images and documents
       const { error: bidError } = await supabase
@@ -388,17 +387,17 @@ const updatedBidCount = (auctionData.bidcount || 0) + 1;
         );
       }
 
-      // Check auction status
-      const now = new Date(); // 01:21 AM PKT, July 01, 2025
-      const start = new Date(auctionData.scheduledstart || now);
+      // Check auction status in IST
+      const nowIST = DateTime.now().setZone("Asia/Kolkata");
+      const startIST = DateTime.fromISO(auctionData.scheduledstart || "").setZone("Asia/Kolkata");
       const duration = auctionData.auctionduration
         ? ((d) => ((d.days || 0) * 86400) + ((d.hours || 0) * 3600) + ((d.minutes || 0) * 60))(
             auctionData.auctionduration
           )
         : 0;
-      const end = new Date(start.getTime() + duration * 1000);
+      const endIST = startIST.plus({ seconds: duration });
 
-      if (now < start || now > end) {
+      if (nowIST < startIST || nowIST > endIST) {
         return NextResponse.json(
           { success: false, error: "Questions can only be posted during the auction period" },
           { status: 400 }
@@ -435,7 +434,7 @@ const updatedBidCount = (auctionData.bidcount || 0) + 1;
         user: userName,
         question,
         answer: null,
-        question_time: new Date().toISOString(),
+        question_time: nowIST.toISO(),
         answer_time: null,
       };
 
@@ -481,17 +480,17 @@ const updatedBidCount = (auctionData.bidcount || 0) + 1;
         );
       }
 
-      // Check auction status
-      const now = new Date(); // 01:21 AM PKT, July 01, 2025
-      const start = new Date(auctionData.scheduledstart || now);
+      // Check auction status in IST
+      const nowIST = DateTime.now().setZone("Asia/Kolkata");
+      const startIST = DateTime.fromISO(auctionData.scheduledstart || "").setZone("Asia/Kolkata");
       const duration = auctionData.auctionduration
         ? ((d) => ((d.days || 0) * 86400) + ((d.hours || 0) * 3600) + ((d.minutes || 0) * 60))(
             auctionData.auctionduration
           )
         : 0;
-      const end = new Date(start.getTime() + duration * 1000);
+      const endIST = startIST.plus({ seconds: duration });
 
-      if (now > end) {
+      if (nowIST > endIST) {
         return NextResponse.json(
           { success: false, error: "Cannot answer questions after auction ends" },
           { status: 400 }
@@ -517,7 +516,7 @@ const updatedBidCount = (auctionData.bidcount || 0) + 1;
       updatedQuestions[questionIndex] = {
         ...updatedQuestions[questionIndex],
         answer,
-        answer_time: new Date().toISOString(),
+        answer_time: nowIST.toISO(),
       };
 
       const { error: updateError } = await supabase
@@ -543,18 +542,17 @@ const updatedBidCount = (auctionData.bidcount || 0) + 1;
   }
 }
 
-// Helper function to calculate time left
-const calculateTimeLeft = (endDateUTC: Date): string => {
-  const nowUTC = new Date(); // Already in UTC internally
-  const diff = endDateUTC.getTime() - nowUTC.getTime();
+// Helper function to calculate time left in IST
+const calculateTimeLeft = (endDateUTC: string): string => {
+  const nowIST = DateTime.now().setZone("Asia/Kolkata");
+  const endIST = DateTime.fromISO(endDateUTC).setZone("Asia/Kolkata");
 
-  if (diff <= 0) return "Auction ended";
+  const diff = endIST.diff(nowIST, ["days", "hours", "minutes"]).toObject();
+  if ((diff.days ?? 0) <= 0 && (diff.hours ?? 0) <= 0 && (diff.minutes ?? 0) <= 0) {
+    return "Auction ended";
+  }
 
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-
-  return `${days}d ${hours}h ${minutes}m`;
+  return `${diff.days ?? 0}d ${diff.hours ?? 0}h ${diff.minutes ?? 0}m`;
 };
 
 async function deduplicateAuctionParticipants() {
