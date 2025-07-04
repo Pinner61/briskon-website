@@ -24,22 +24,19 @@ import Image from "next/image";
 import { useAuth } from "@/hooks/use-auth";
 import { LoginPrompt } from "@/components/login-prompt";
 import { ReactNode } from "react";
-import { DateTime } from "luxon"; // Import luxon for timezone handling
+import { DateTime } from "luxon";
 
-// Updated calculateTimeLeft function to handle null input
-const calculateTimeLeft = (endDateUTC: string | null): string => {
-  if (!endDateUTC) return "Auction ended or time not set";
-  const endIST = DateTime.fromISO(endDateUTC).setZone("Asia/Kolkata");
-  const nowIST = DateTime.now().setZone("Asia/Kolkata");
-  const diff = Math.max(0, endIST.toMillis() - nowIST.toMillis());
+// Updated calculateTimeLeft function to handle dynamic countdown
+const calculateTimeLeft = (targetDateIST: DateTime, nowIST: DateTime): string => {
+  const diff = Math.max(0, targetDateIST.toMillis() - nowIST.toMillis());
 
   if (diff <= 0) return "Auction ended";
 
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
   const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-
-  return `${days}d ${hours}h ${minutes}m`;
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+  return `${days > 0 ? `${days}d ` : ""}${hours > 0 ? `${hours}h ` : ""}${minutes}m ${seconds}s`;
 };
 
 function renderKeyValueBlock(
@@ -142,6 +139,7 @@ export default function AuctionDetailPage() {
   const [bidHistory, setBidHistory] = useState<{ bidder: string; amount: number; time: string }[]>([]);
   const [newQuestion, setNewQuestion] = useState("");
   const [answerInput, setAnswerInput] = useState<{ index: number; value: string } | null>(null);
+  const [timeLeft, setTimeLeft] = useState<string>("Loading...");
 
   const { isAuthenticated, user } = useAuth();
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
@@ -199,6 +197,45 @@ export default function AuctionDetailPage() {
     fetchAuctionDetails();
   }, [auctionId]);
 
+  // Dynamic time left and status update
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    const updateTimeLeft = () => {
+      if (auction?.scheduledstart && auction.auctionduration) {
+        const nowIST = DateTime.now().setZone("Asia/Kolkata");
+        const startIST = DateTime.fromISO(auction.scheduledstart, { zone: "utc" }).setZone("Asia/Kolkata");
+        const duration = ((d: any) => ((d.days ?? 0) * 24 * 60 * 60) + ((d.hours ?? 0) * 60 * 60) + ((d.minutes ?? 0) * 60))(auction.auctionduration);
+        const endIST = startIST.plus({ seconds: duration });
+        console.log("Time Calculation:", {
+          auctionScheduledStart: auction.scheduledstart,
+          nowIST: nowIST.toISO(),
+          startIST: startIST.toISO(),
+          endIST: endIST.toISO(),
+          duration,
+        }
+        )
+        let isAuctionNotStarted = nowIST < startIST;
+        let isAuctionEnded = false;
+        let calculatedTimeLeft = "";
+
+        if (isAuctionNotStarted) {
+          calculatedTimeLeft = calculateTimeLeft(startIST, nowIST);
+        } else {
+          isAuctionEnded = endIST < nowIST;
+          if (!isAuctionEnded) {
+            calculatedTimeLeft = calculateTimeLeft(endIST, nowIST);
+          }
+        }
+
+        setTimeLeft(calculatedTimeLeft || "Auction ended");
+      }
+    };
+
+    updateTimeLeft();
+    interval = setInterval(updateTimeLeft, 1000);
+    return () => clearInterval(interval);
+  }, [auction?.scheduledstart, auction?.auctionduration]);
+
   const handlePlaceBid = async () => {
     if (!isAuthenticated) {
       setShowLoginPrompt(true);
@@ -217,13 +254,11 @@ export default function AuctionDetailPage() {
       return;
     }
 
-    // Check for sealed bid restriction (one bid per email)
     if (auction?.auctionsubtype === "sealed" && auction?.participants?.some(p => user?.id && p.includes(user.id ?? ""))) {
       alert("You have already submitted a bid for this sealed auction and cannot bid again.");
       return;
     }
 
-    // Minimum bid validation
     const round = (val: number) => Math.round((val + Number.EPSILON) * 100) / 100;
     const expectedBid = round(getMinimumBid());
     const userAmount = round(Number(bidAmount));
@@ -252,7 +287,7 @@ export default function AuctionDetailPage() {
       formData.append("user_id", user.id ?? "");
       formData.append("user_email", user.email ?? "");
       formData.append("amount", amount.toString());
-      const createdAt = DateTime.now().setZone("Asia/Kolkata").toUTC().toISO(); // Ensure non-null
+      const createdAt = DateTime.now().setZone("Asia/Kolkata").toUTC().toISO();
       if (createdAt) formData.append("created_at", createdAt);
 
       const bidRes = await fetch(`/api/auctions/${auctionId}`, {
@@ -262,22 +297,18 @@ export default function AuctionDetailPage() {
       const bidJson = await bidRes.json();
       if (!bidJson.success) throw new Error(bidJson.error || "Failed to record bid");
 
-      const auctionRes = await fetch(`/api/auctions/${auctionId}`); // Refresh auction data
+      const auctionRes = await fetch(`/api/auctions/${auctionId}`);
       const auctionJson = await auctionRes.json();
       if (!auctionJson.success) throw new Error(auctionJson.error || "Failed to fetch updated auction");
 
-      const startIST = DateTime.fromISO(auctionJson.data.scheduledstart ?? "").setZone("Asia/Kolkata");
+      const startIST = DateTime.fromISO(auction.scheduledstart, { zone: "utc" }).setZone("Asia/Kolkata");
       const duration = auctionJson.data.auctionduration
-        ? ((d) => ((d.days ?? 0) * 24 * 60 * 60) + ((d.hours ?? 0) * 60 * 60) + ((d.minutes ?? 0) * 60))(
-            auctionJson.data.auctionduration
-          )
+        ? ((d) => ((d.days ?? 0) * 24 * 60 * 60) + ((d.hours ?? 0) * 60 * 60) + ((d.minutes ?? 0) * 60))(auctionJson.data.auctionduration)
         : 0;
       const endIST = startIST.plus({ seconds: duration });
-      const timeLeft = calculateTimeLeft(endIST.toUTC().toISO());
 
-      setAuction({ ...auctionJson.data, id: auctionId, timeLeft });
+      setAuction({ ...auctionJson.data, id: auctionId });
 
-      // Refetch bid history after successful bid
       const bidResUpdated = await fetch(`/api/bids/${auctionId}`);
       const bidJsonUpdated = await bidResUpdated.json();
       if (bidJsonUpdated.success) {
@@ -380,10 +411,8 @@ export default function AuctionDetailPage() {
       formData.append("action", "postQuestion");
       formData.append("user_id", user?.id ?? "");
       formData.append("user_email", user?.email ?? "");
-
       formData.append("question", newQuestion);
 
-      // Debug: Log FormData entries
       for (let [key, value] of formData.entries()) {
         console.log("FormData Entry:", key, value);
       }
@@ -455,15 +484,23 @@ export default function AuctionDetailPage() {
 
   // Calculate auction status using IST with null safety
   const nowIST = DateTime.now().setZone("Asia/Kolkata");
-  const startIST = DateTime.fromISO(auction.scheduledstart ?? "").setZone("Asia/Kolkata");
+  const startIST = DateTime.fromISO(auction.scheduledstart, { zone: "utc" }).setZone("Asia/Kolkata");
   const duration = auction.auctionduration
-    ? ((d) => ((d.days ?? 0) * 24 * 60 * 60) + ((d.hours ?? 0) * 60 * 60) + ((d.minutes ?? 0) * 60))(
-        auction.auctionduration
-      )
+    ? ((d) => ((d.days ?? 0) * 24 * 60 * 60) + ((d.hours ?? 0) * 60 * 60) + ((d.minutes ?? 0) * 60))(auction.auctionduration)
     : 0;
   const endIST = startIST.plus({ seconds: duration });
-  const isAuctionNotStarted = nowIST < startIST;
-  const isAuctionEnded = nowIST > endIST;
+  let isAuctionNotStarted = nowIST < startIST;
+  let isAuctionEnded = false;
+  let timeLeftDisplay = timeLeft;
+
+  if (!isAuctionNotStarted) {
+    isAuctionEnded = endIST < nowIST;
+    if (!isAuctionEnded) {
+      timeLeftDisplay = calculateTimeLeft(endIST, nowIST);
+    }
+  } else {
+    timeLeftDisplay = calculateTimeLeft(startIST, nowIST);
+  }
 
   console.log("Auction Status:", {
     isAuctionNotStarted,
@@ -471,7 +508,7 @@ export default function AuctionDetailPage() {
     startIST: startIST.toISO(),
     endIST: endIST.toISO(),
     nowIST: nowIST.toISO(),
-    timeLeft: calculateTimeLeft(endIST.toUTC().toISO()),
+    timeLeft: timeLeftDisplay,
   });
 
   const isSameAmount = (a: number, b: number, epsilon = 0.01) =>
@@ -491,9 +528,9 @@ export default function AuctionDetailPage() {
         ? (
             auction?.participants?.some(
               (p) => user?.id && p.includes(user.id ?? "")
-            ) || bidAmountNumber < (auction?.startprice ?? 0) // ❌ disable if already participated OR bid too low
+            ) || bidAmountNumber < (auction?.startprice ?? 0)
           )
-        : !isSameAmount(bidAmountNumber, getMinimumBid()) // ❌ disable if not exactly expected bid
+        : !isSameAmount(bidAmountNumber, getMinimumBid())
     );
 
   const isSilentAuction = auction?.issilentauction || auction?.auctionsubtype === "silent";
@@ -502,9 +539,7 @@ export default function AuctionDetailPage() {
     <div className="min-h-screen py-20">
       <div className="container mx-auto px-4">
         <div className="grid lg:grid-cols-3 gap-8">
-          {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Image Gallery */}
             <Card className="hover-lift transition-smooth">
               <CardContent className="p-0 relative">
                 <Image
@@ -514,11 +549,9 @@ export default function AuctionDetailPage() {
                   height={400}
                   className="w-full h-96 object-cover rounded-t-lg transition-smooth hover:scale-105"
                 />
-                {/* Image Count */}
                 <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
                   {`${currentImageIndex + 1}/${auction.productimages?.length ?? 1}`}
                 </div>
-                {/* Navigation Arrows */}
                 <button
                   onClick={handlePrevImage}
                   className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-smooth"
@@ -549,7 +582,6 @@ export default function AuctionDetailPage() {
               </CardContent>
             </Card>
 
-            {/* Auction Details */}
             <Card>
               <CardHeader>
                 <div className="flex items-start justify-between">
@@ -777,9 +809,7 @@ export default function AuctionDetailPage() {
             </Card>
           </div>
 
-          {/* Sidebar */}
           <div className="space-y-6">
-            {/* Bidding Card */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -815,7 +845,7 @@ export default function AuctionDetailPage() {
                 <div className="flex items-center justify-center gap-4 text-sm">
                   <div className="flex items-center gap-1 hover-lift">
                     <Clock className="h-4 w-4 text-red-600 animate-bounce-gentle" />
-                    <span className="font-semibold text-red-600">{calculateTimeLeft(endIST.toUTC().toISO()) || "N/A"}</span>
+                    <span className="font-semibold text-red-600">{timeLeft}</span>
                   </div>
                   <div className="flex items-center gap-1 hover-lift">
                     <Users className="h-4 w-4" />
@@ -890,7 +920,6 @@ export default function AuctionDetailPage() {
               </CardContent>
             </Card>
 
-            {/* Seller Info */}
             <Card>
               <CardHeader>
                 <CardTitle>Seller Information</CardTitle>
@@ -898,7 +927,7 @@ export default function AuctionDetailPage() {
               <CardContent>
                 <div className="flex items-center gap-3 mb-4">
                   <Image
-                    src="/placeholder.svg" // Placeholder since no avatar is provided
+                    src="/placeholder.svg"
                     alt={auction.createdby || "Seller"}
                     width={60}
                     height={60}
@@ -908,7 +937,7 @@ export default function AuctionDetailPage() {
                     <h4 className="font-semibold">{auction.createdby || "Unknown Seller"}</h4>
                     <div className="flex items-center gap-1">
                       <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                      <span className="text-sm">0</span> {/* No rating data, default to 0 */}
+                      <span className="text-sm">0</span>
                     </div>
                   </div>
                 </div>
@@ -916,7 +945,7 @@ export default function AuctionDetailPage() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span>Completed Projects</span>
-                    <span className="font-medium">0</span> {/* No disabledProjects data, default to 0 */}
+                    <span className="font-medium">0</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Watchers</span>
@@ -930,21 +959,16 @@ export default function AuctionDetailPage() {
               </CardContent>
             </Card>
 
-            {/* Auction Stats */}
             <Card>
               <CardHeader>
                 <CardTitle>Auction Details</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
-                {/* Starting Bid */}
                 <div className="flex justify-between">
                   <span>Starting Bid</span>
-                  <span className="font-medium">
-                    ${(auction.startprice ?? 0).toLocaleString()}
-                  </span>
+                  <span className="font-medium">${(auction.startprice ?? 0).toLocaleString()}</span>
                 </div>
 
-                {/* Conditional: Silent/Sealed Bid or Current Bid */}
                 {(auction?.auctionsubtype === "sealed") ? (
                   <div className="flex justify-between">
                     <span>Sealed Bid</span>
@@ -958,34 +982,25 @@ export default function AuctionDetailPage() {
                 ) : (
                   <div className="flex justify-between">
                     <span>Current Bid</span>
-                    <span className="font-medium text-green-600">
-                      ${(auction.currentbid ?? 0).toLocaleString()}
-                    </span>
+                    <span className="font-medium text-green-600">${(auction.currentbid ?? 0).toLocaleString()}</span>
                   </div>
                 )}
 
-                {/* Buy Now Price */}
                 {auction.buyNowPrice && (
                   <div className="flex justify-between">
                     <span>Buy Now Price</span>
-                    <span className="font-medium">
-                      ${auction.buyNowPrice.toLocaleString()}
-                    </span>
+                    <span className="font-medium">${auction.buyNowPrice.toLocaleString()}</span>
                   </div>
                 )}
 
-                {/* Total Bids */}
                 <div className="flex justify-between">
                   <span>Total Bids</span>
                   <span className="font-medium">{auction.bidcount || 0}</span>
                 </div>
 
-                {/* Time Remaining */}
                 <div className="flex justify-between">
                   <span>Time Remaining</span>
-                  <span className="font-medium text-red-600">
-                    {calculateTimeLeft(endIST.toUTC().toISO()) || "N/A"}
-                  </span>
+                  <span className="font-medium text-red-600">{timeLeft}</span>
                 </div>
               </CardContent>
             </Card>
