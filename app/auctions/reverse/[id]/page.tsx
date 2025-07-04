@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DateTime } from "luxon";
 import {
   Clock,
   Users,
@@ -306,14 +307,16 @@ const DragDropUpload = ({
 };
 
 // Dummy calculateTimeLeft function
-const calculateTimeLeft = (endDate: Date): string => {
-  const now = new Date(); // 02:31 AM PKT, July 01, 2025
-  const diff = endDate.getTime() - now.getTime();
+const calculateTimeLeft = (targetDateIST: DateTime, nowIST: DateTime): string => {
+  const diff = Math.max(0, targetDateIST.toMillis() - nowIST.toMillis());
+
   if (diff <= 0) return "Auction ended";
+
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
   const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-  return `${days}d ${hours}h ${minutes}m`;
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+  return `${days > 0 ? `${days}d ` : ""}${hours > 0 ? `${hours}h ` : ""}${minutes}m ${seconds}s`;
 };
 
 function renderKeyValueBlock(
@@ -373,7 +376,7 @@ export default function ReverseAuctionDetailPage() {
   const [uploadedImages, setUploadedImages] = useState<UploadedFile[]>([]);
   const [newQuestion, setNewQuestion] = useState("");
   const [answerInput, setAnswerInput] = useState<{ index: number; value: string } | null>(null);
-
+  const [timeLeft, setTimeLeft] = useState<string>("Loading...");
   const { isAuthenticated, user } = useAuth();
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
 
@@ -452,6 +455,43 @@ export default function ReverseAuctionDetailPage() {
   const handleImageUpload = (files: UploadedFile[]) => {
     setUploadedImages((prev) => [...prev, ...files]);
   };
+  useEffect(() => {
+      let interval: NodeJS.Timeout;
+      const updateTimeLeft = () => {
+        if (auction?.scheduledstart && auction.auctionduration) {
+          const nowIST = DateTime.now().setZone("Asia/Kolkata");
+          const startIST = DateTime.fromISO(auction.scheduledstart, { zone: "utc" }).setZone("Asia/Kolkata");
+          const duration = ((d: any) => ((d.days ?? 0) * 24 * 60 * 60) + ((d.hours ?? 0) * 60 * 60) + ((d.minutes ?? 0) * 60))(auction.auctionduration);
+          const endIST = startIST.plus({ seconds: duration });
+          console.log("Time Calculation:", {
+            auctionScheduledStart: auction.scheduledstart,
+            nowIST: nowIST.toISO(),
+            startIST: startIST.toISO(),
+            endIST: endIST.toISO(),
+            duration,
+          }
+          )
+          let isAuctionNotStarted = nowIST < startIST;
+          let isAuctionEnded = false;
+          let calculatedTimeLeft = "";
+  
+          if (isAuctionNotStarted) {
+            calculatedTimeLeft = calculateTimeLeft(startIST, nowIST);
+          } else {
+            isAuctionEnded = endIST < nowIST;
+            if (!isAuctionEnded) {
+              calculatedTimeLeft = calculateTimeLeft(endIST, nowIST);
+            }
+          }
+  
+          setTimeLeft(calculatedTimeLeft || "Auction ended");
+        }
+      };
+  
+      updateTimeLeft();
+      interval = setInterval(updateTimeLeft, 1000);
+      return () => clearInterval(interval);
+  }, [auction?.scheduledstart, auction?.auctionduration]);
 
   const handlePlaceBid = async () => {
     if (!isAuthenticated) {
@@ -534,7 +574,8 @@ export default function ReverseAuctionDetailPage() {
       formData.append("user_id", userId);
       formData.append("user_email", userEmail);
       formData.append("amount", amount.toString());
-      formData.append("created_at", new Date().toISOString());
+      const createdAt = DateTime.now().setZone("Asia/Kolkata").toUTC().toISO();
+      if (createdAt) formData.append("created_at", createdAt);
 
       uploadedDocuments.forEach((doc, index) => {
         if (doc.files) {
@@ -561,14 +602,13 @@ export default function ReverseAuctionDetailPage() {
       const auctionJson = await auctionRes.json();
       if (!auctionJson.success) throw new Error(auctionJson.error || "Failed to fetch updated auction");
 
-      const start = new Date(auctionJson.data.scheduledstart || "");
+      const start = DateTime.fromISO(auction.scheduledstart, { zone: "utc" }).setZone("Asia/Kolkata");
       const duration = auctionJson.data.auctionduration
-        ? ((d) => ((d.days || 0) * 86400 + (d.hours || 0) * 3600 + (d.minutes || 0) * 60))(auctionJson.data.auctionduration)
+        ? ((d) => ((d.days ?? 0) * 24 * 60 * 60) + ((d.hours ?? 0) * 60 * 60) + ((d.minutes ?? 0) * 60))(auctionJson.data.auctionduration)
         : 0;
-      const end = new Date(start.getTime() + duration * 1000);
-      const timeLeft = calculateTimeLeft(end);
+      const end = start.plus({ seconds: duration });
 
-      setAuction({ ...auctionJson.data, timeLeft });
+      setAuction({ ...auctionJson.data, id:auctionId });
 
       // Refetch bid history after successful bid
       const bidResUpdated = await fetch(`/api/bids/${auctionId}`);
@@ -583,10 +623,15 @@ export default function ReverseAuctionDetailPage() {
           const bidderName = profileJson.success
             ? `${profileJson.data.fname || ""} ${profileJson.data.lname || ""}`.trim() || profileJson.data.email || bid.user_id
             : `User ${bid.user_id} (Profile not found)`;
+          const bidTime = DateTime.fromISO(bid.created_at).setZone("Asia/Kolkata").toLocaleString({
+            hour12: true,
+            hour: "2-digit",
+            minute: "2-digit",
+            });
           return {
             bidder: bidderName,
             amount: bid.amount,
-            time: new Date(bid.created_at).toLocaleString("en-US", { hour12: true, hour: "2-digit", minute: "2-digit" }),
+            time: bidTime,
           };
         });
         const history = await Promise.all(historyPromises);
@@ -734,16 +779,32 @@ export default function ReverseAuctionDetailPage() {
   if (error) return <div className="text-center py-20 text-red-600">{error}</div>;
   if (!auction) return <div className="text-center py-20">Auction not found</div>;
 
-  const now = new Date(); // 02:31 AM PKT, July 01, 2025
-  const start = new Date(auction.scheduledstart || now);
+  const now = DateTime.now().setZone("Asia/Kolkata");
+  const start = DateTime.fromISO(auction.scheduledstart, { zone: "utc" }).setZone("Asia/Kolkata");
   const duration = auction.auctionduration
-    ? ((d) => ((d.days || 0) * 24 * 60 * 60) + ((d.hours || 0) * 60 * 60) + ((d.minutes || 0) * 60))(
-        auction.auctionduration
-      )
+    ? ((d) => ((d.days ?? 0) * 24 * 60 * 60) + ((d.hours ?? 0) * 60 * 60) + ((d.minutes ?? 0) * 60))(auction.auctionduration)
     : 0;
-  const end = new Date(start.getTime() + duration * 1000);
-  const isAuctionNotStarted = now < start;
-  const isAuctionEnded = now > end;
+  const end = start.plus({ seconds: duration });
+  let isAuctionNotStarted = now < start;
+  let isAuctionEnded = false;
+  let timeLeftDisplay = timeLeft;
+
+  if (!isAuctionNotStarted) {
+    isAuctionEnded = end < now;
+    if (!isAuctionEnded) {
+      timeLeftDisplay = calculateTimeLeft(end, now);
+    }
+  } else {
+    timeLeftDisplay = calculateTimeLeft(start, now);
+  }
+  console.log("Auction Status:", {
+    isAuctionNotStarted,
+    isAuctionEnded,
+    startIST: start.toISO(),
+    endIST: end.toISO(),
+    nowIST: now.toISO(),
+    timeLeft: timeLeftDisplay,
+  });
   const isSameAmount = (a: number, b: number, epsilon = 0.01) =>
     Math.abs(a - b) < epsilon;
 
@@ -990,7 +1051,11 @@ export default function ReverseAuctionDetailPage() {
                             <div className="mb-2">
                               <span className="font-medium">{qa.user}</span>
                               <span className="text-sm text-gray-600 dark:text-gray-300 ml-2">
-                                {new Date(qa.question_time).toLocaleString("en-US", { hour12: true, hour: "2-digit", minute: "2-digit" })}
+                                {DateTime.fromISO(qa.question_time ?? "").setZone("Asia/Kolkata").toLocaleString({
+                                  hour12: true,
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
                               </span>
                             </div>
                             <div className="mb-2">
@@ -1002,7 +1067,11 @@ export default function ReverseAuctionDetailPage() {
                                 <CheckCircle className="h-4 w-4 inline mr-2 text-green-600" />
                                 <span>{qa.answer}</span>
                                 <span className="text-sm text-gray-600 dark:text-gray-300 ml-2">
-                                  {new Date(qa.answer_time!).toLocaleString("en-US", { hour12: true, hour: "2-digit", minute: "2-digit" })}
+                                  {DateTime.fromISO(qa.answer_time ?? "").setZone("Asia/Kolkata").toLocaleString({
+                                    hour12: true,
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}
                                 </span>
                               </div>
                             ) : user?.email === auction?.createdby && !isAuctionEnded ? (
@@ -1130,7 +1199,7 @@ export default function ReverseAuctionDetailPage() {
                 <div className="flex items-center justify-center gap-4 text-sm">
                   <div className="flex items-center gap-1 hover-lift">
                     <Clock className="h-4 w-4 text-red-600 animate-bounce-gentle" />
-                    <span className="font-semibold text-red-600">{auction.timeLeft || "N/A"}</span>
+                    <span className="font-semibold text-red-600">{timeLeft || "N/A"}</span>
                   </div>
                   <div className="flex items-center gap-1 hover-lift">
                     <Users className="h-4 w-4" />
@@ -1282,7 +1351,7 @@ export default function ReverseAuctionDetailPage() {
                 </div>
                 <div className="flex justify-between">
                   <span>Time Remaining</span>
-                  <span className="font-medium text-red-600">{auction.timeLeft || "N/A"}</span>
+                  <span className="font-medium text-red-600">{timeLeft || "N/A"}</span>
                 </div>
               </CardContent>
             </Card>
