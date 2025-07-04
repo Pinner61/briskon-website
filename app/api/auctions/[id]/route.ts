@@ -209,7 +209,7 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
       }
 
       // Check auction status
-      const now = new Date(); // 01:21 AM PKT, July 01, 2025
+      const now = new Date(); 
       const start = new Date(auctionData.scheduledstart || now);
       const duration = auctionData.auctionduration
         ? ((d) => ((d.days || 0) * 86400) + ((d.hours || 0) * 3600) + ((d.minutes || 0) * 60))(
@@ -219,8 +219,9 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
       const end = new Date(start.getTime() + duration * 1000);
 
       if (now < start) {
+        console.log({now, start, end});
         return NextResponse.json(
-          { success: false, error: "Auction has not started yet" },
+          { success: false, error: "Auction has not started yet " },
           { status: 400 }
         );
       }
@@ -543,16 +544,18 @@ const updatedBidCount = (auctionData.bidcount || 0) + 1;
 }
 
 // Helper function to calculate time left
-function calculateTimeLeft(endDate: Date): string {
-  const now = new Date(); // Current time: 11:21 PM PKT, June 30, 2025
-  const diff = endDate.getTime() - now.getTime();
+const calculateTimeLeft = (endDateUTC: Date): string => {
+  const nowUTC = new Date(); // Already in UTC internally
+  const diff = endDateUTC.getTime() - nowUTC.getTime();
+
   if (diff <= 0) return "Auction ended";
+
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
   const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-  return `${days}d ${hours}h ${minutes}m`;
-}
 
+  return `${days}d ${hours}h ${minutes}m`;
+};
 
 async function deduplicateAuctionParticipants() {
   const { data: auctions, error } = await supabase
