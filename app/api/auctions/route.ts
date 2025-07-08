@@ -159,6 +159,7 @@ export async function GET() {
     const { data, error } = await supabase
       .from("auctions")
       .select("*")
+      .eq(  "approved", true)
       .order("createdat", { ascending: false });
 
     if (error) {
