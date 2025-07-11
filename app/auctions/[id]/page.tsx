@@ -401,10 +401,6 @@ export default function AuctionDetailPage() {
       return;
     }
 
-    if (auction?.participants && !auction.participants.some(p => user?.id && p.includes(user.id ?? ""))) {
-      alert("Only registered participants can ask questions.");
-      return;
-    }
 
     try {
       const formData = new FormData();
