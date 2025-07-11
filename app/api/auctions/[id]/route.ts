@@ -398,13 +398,6 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
       );
     }
 
-    if (auctionData.participants && !auctionData.participants.includes(user_id)) {
-      return NextResponse.json(
-        { success: false, error: "Only registered participants can post questions" },
-        { status: 400 }
-      );
-    }
-
     const { data: profileData, error: profileError } = await supabase
       .from("profiles")
       .select("fname, lname, email")
