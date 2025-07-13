@@ -406,11 +406,13 @@ export default function AuctionsPage() {
         : auction.image || "/placeholder.svg";
     }, [auction.productimages, currentImageIndex, auction.image]);
 
-    const auctionPath = auction.auctiontype === "reverse"
-      ? `/auctions/reverse/${auction.id}`
-      : auction.auctiontype === "forward" && auction.auctionsubtype === "dutch"
-      ? `/auctions/dutch/${auction.id}`
-      : `/auctions/${auction.id}`;
+const auctionPath = auction.auctiontype === "reverse"
+  ? `/auctions/reverse/${auction.id}`
+  : auction.auctiontype === "forward" && auction.auctionsubtype === "dutch"
+  ? `/auctions/dutch/${auction.id}`
+  : auction.auctiontype === "forward" && auction.auctionsubtype === "yankee"
+  ? `/auctions/yankee/${auction.id}`
+  : `/auctions/${auction.id}`;
 
     return (
       <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 group relative border border-gray-200 bg-white dark:bg-gray-800">
