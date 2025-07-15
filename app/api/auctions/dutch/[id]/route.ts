@@ -31,6 +31,7 @@ interface Auction {
   requireddocuments?: string | null;
   auctiontype?: "forward" | "reverse";
   ended?: boolean;
+  editable?: boolean;
   questions?: {
     user: string;
     question: string;
@@ -150,6 +151,7 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
           participants: updatedParticipants,
           bidcount: updatedBidCount,
           ended: true,
+          editable: false, // Mark as not editable after a bid
         })
         .eq("id", id)
         .select();
@@ -159,7 +161,7 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
       return NextResponse.json({ success: true, data: data[0] }, { status: 200 });
     }
 
-    if (action === "postQuestion") {
+   else if (action === "postQuestion") {
       const user_id = formData.get("user_id") as string;
       const user_email = formData.get("user_email") as string;
       const question = formData.get("question") as string;
@@ -222,7 +224,7 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
       return NextResponse.json({ success: true, data: { questions: updatedQuestions, question_count: updatedQuestionCount } }, { status: 200 });
     }
 
-    if (action === "answerQuestion") {
+   else if (action === "answerQuestion") {
       const user_email = formData.get("user_email") as string;
       const questionIndex = parseInt(formData.get("questionIndex") as string);
       const answer = formData.get("answer") as string;
@@ -270,6 +272,40 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
 
       return NextResponse.json({ success: true, data: { questions: updatedQuestions } }, { status: 200 });
     }
+   else if (action === "markEnded") {
+          // New action to mark auction as ended
+          const { data: auctionData, error: fetchError } = await supabase
+            .from("auctions")
+            .select("ended")
+            .eq("id", id)
+            .single();
+    
+          if (fetchError || !auctionData) {
+            return NextResponse.json(
+              { success: false, error: fetchError?.message || "Auction not found" },
+              { status: 404 }
+            );
+          }
+    
+          if (auctionData.ended) {
+            return NextResponse.json(
+              { success: false, error: "Auction is already marked as ended" },
+              { status: 400 }
+            );
+          }
+    
+          const { error: updateError } = await supabase
+            .from("auctions")
+            .update({ ended: true, editable: false }) // Mark as ended and not editable
+            .eq("id", id);
+    
+          if (updateError) {
+            return NextResponse.json({ success: false, error: updateError.message }, { status: 500 });
+          }
+    
+          return NextResponse.json({ success: true, data: { ended: true } }, { status: 200 });
+        }
+
 
     return NextResponse.json({ success: false, error: "Invalid action" }, { status: 400 });
   } catch (error) {
