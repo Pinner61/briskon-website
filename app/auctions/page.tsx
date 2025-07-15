@@ -163,114 +163,169 @@ export default function AuctionsPage() {
   const [visibleUpcoming, setVisibleUpcoming] = useState(8);
   const [visibleClosed, setVisibleClosed] = useState(8);
 
-  useEffect(() => {
-    const fetchAuctions = async () => {
-      try {
-        const res = await fetch("/api/auctions");
-        const json = await res.json();
-        if (!json.success) return;
+  const fetchAuctions = useCallback(async () => {
+    try {
+      const res = await fetch("/api/auctions");
+      const json = await res.json();
+      if (!json.success) return;
 
-        const updateStatuses = () => {
-          const nowIST = DateTime.now().setZone("Asia/Kolkata");
+      const updateStatuses = () => {
+        const nowIST = DateTime.now().setZone("Asia/Kolkata");
 
-          const mapped: AuctionItem[] = (json.data || []).map((a: any) => {
-            const startUTC = a.scheduledstart ? DateTime.fromISO(a.scheduledstart, { zone: "utc" }) : null;
-            const startIST = startUTC ? startUTC.setZone("Asia/Kolkata") : null;
+        const mapped: AuctionItem[] = (json.data || []).map((a: any) => {
+          const startUTC = a.scheduledstart ? DateTime.fromISO(a.scheduledstart, { zone: "utc" }) : null;
+          const startIST = startUTC ? startUTC.setZone("Asia/Kolkata") : null;
 
-            const duration = a.auctionduration
-              ? ((d: any) =>
-                  ((d.days || 0) * 86400) +
-                  ((d.hours || 0) * 3600) +
-                  ((d.minutes || 0) * 60))(a.auctionduration)
-              : 0;
+          const duration = a.auctionduration
+            ? ((d: any) =>
+                ((d.days || 0) * 86400) +
+                ((d.hours || 0) * 3600) +
+                ((d.minutes || 0) * 60))(a.auctionduration)
+            : 0;
 
-            const endIST = startIST ? startIST.plus({ seconds: duration }) : null;
+          const endIST = startIST ? startIST.plus({ seconds: duration }) : null;
 
-            console.log(
-              "Debug - Auction ID:", a.id,
-              "Start UTC:", a.scheduledstart,
-              "Start IST:", startIST?.toString(),
-              "End IST:", endIST?.toString(),
-              "Now IST:", nowIST.toString()
-            );
+          let status: "live" | "upcoming" | "closed" = "upcoming";
+          if (a.ended === true) {
+            status = "closed";
+          } else if (startIST && endIST) {
+            if (nowIST < startIST) status = "upcoming";
+            else if (nowIST >= startIST && nowIST <= endIST) status = "live";
+            else if (nowIST > endIST) status = "closed";
+          }
 
-            let status: "live" | "upcoming" | "closed" = "upcoming";
-            if (a.ended === true) {
-              status = "closed";
-            } else if (startIST && endIST) {
-              if (nowIST < startIST) status = "upcoming";
-              else if (nowIST >= startIST && nowIST <= endIST) status = "live";
-              else if (nowIST > endIST) status = "closed";
-            }
+          const timeDiff = (target: DateTime) => {
+            const diff = target.diff(nowIST, ["days", "hours", "minutes"]);
+            if (!diff.isValid) return "Invalid time";
 
-            const timeDiff = (target: DateTime) => {
-              const diff = target.diff(nowIST, ["days", "hours", "minutes"]);
-              if (!diff.isValid) return "Invalid time";
+            const { days = 0, hours = 0, minutes = 0 } = diff.toObject();
 
-              const { days = 0, hours = 0, minutes = 0 } = diff.toObject();
+            if (days <= 0 && hours <= 0 && minutes <= 0) return "0d 0h 0m";
 
-              if (days <= 0 && hours <= 0 && minutes <= 0) return "0d 0h 0m";
+            return `${Math.floor(days)}d ${Math.floor(hours)}h ${Math.floor(minutes)}m`;
+          };
 
-              return `${Math.floor(days)}d ${Math.floor(hours)}h ${Math.floor(minutes)}m`;
-            };
+          const timeLeft = status === "live" && endIST ? timeDiff(endIST) : undefined;
+          const startsIn = status === "upcoming" && startIST ? timeDiff(startIST) : undefined;
 
-            const timeLeft = status === "live" && endIST ? timeDiff(endIST) : undefined;
-            console.log("Debug - Auction ID:", a.id, "Status:", status, "Time Left:", timeLeft);
-            const startsIn = status === "upcoming" && startIST ? timeDiff(startIST) : undefined;
+          return {
+            id: a.id,
+            title: a.productname || a.title || "Untitled Auction",
+            category: a.categoryid || "",
+            image: Array.isArray(a.productimages) && a.productimages.length > 0
+              ? a.productimages[0]
+              : "/placeholder.svg",
+            auctiontype: a.auctiontype,
+            status,
+            location: a.location || "",
+            scheduledStart: a.scheduledstart || "",
+            auctionDuration: a.auctionduration || "",
+            featured: a.featured || false,
+            verified: a.verified || false,
+            currentBid: a.currentbid ?? undefined,
+            timeLeft: endIST?.toISO(),
+            startsIn: startIST?.toISO(),
+            bidders: Array.isArray(a.participants) ? a.participants.length : undefined,
+            seller: a.createdby || "",
+            rating: a.rating ?? undefined,
+            targetPrice: a.targetprice ?? undefined,
+            deadline: "",
+            proposals: a.proposals ?? undefined,
+            buyer: a.buyer || "",
+            startingBid: a.startprice ?? undefined,
+            finalBid: a.finalbid ?? undefined,
+            endedAgo: "",
+            winner: a.winner || "",
+            views: a.views ?? undefined,
+            watchers: a.watchers ?? undefined,
+            productimages: a.productimages || [],
+            productdocuments: a.productdocuments || [],
+            createdat: a.createdat || "",
+            auctionsubtype: a.auctionsubtype || undefined,
+            ended: a.ended || false,
+            scheduledstart: a.scheduledstart || "",
+            auctionduration: a.auctionduration || { days: 0, hours: 0, minutes: 0 },
+          };
+        });
 
-            return {
-              id: a.id,
-              title: a.productname || a.title || "Untitled Auction",
-              category: a.categoryid || "",
-              image: Array.isArray(a.productimages) && a.productimages.length > 0
-                ? a.productimages[0]
-                : "/placeholder.svg",
-              auctiontype: a.auctiontype,
-              status,
-              location: a.location || "",
-              scheduledStart: a.scheduledstart || "",
-              auctionDuration: a.auctionduration || "",
-              featured: a.featured || false,
-              verified: a.verified || false,
-              currentBid: a.currentbid ?? undefined,
-              timeLeft: endIST?.toISO(),
-              startsIn: startIST?.toISO(),
-              bidders: Array.isArray(a.participants) ? a.participants.length : undefined,
-              seller: a.createdby || "",
-              rating: a.rating ?? undefined,
-              targetPrice: a.targetprice ?? undefined,
-              deadline: "",
-              proposals: a.proposals ?? undefined,
-              buyer: a.buyer || "",
-              startingBid: a.startprice ?? undefined,
-              finalBid: a.finalbid ?? undefined,
-              endedAgo: "",
-              winner: a.winner || "",
-              views: a.views ?? undefined,
-              watchers: a.watchers ?? undefined,
-              productimages: a.productimages || [],
-              productdocuments: a.productdocuments || [],
-              createdat: a.createdat || "",
-              auctionsubtype: a.auctionsubtype || undefined,
-              ended: a.ended || false,
-              scheduledstart: a.scheduledstart || "",
-              auctionduration: a.auctionduration || { days: 0, hours: 0, minutes: 0 },
-            };
-          });
+        setAllAuctionItems(mapped);
+      };
 
-          setAllAuctionItems(mapped);
-        };
-
-        updateStatuses();
-        const interval = setInterval(updateStatuses, 60000); // update every minute
-        return () => clearInterval(interval);
-      } catch (error) {
-        console.error("Failed to fetch auctions:", error);
-      }
-    };
-
-    fetchAuctions();
+      updateStatuses();
+    } catch (error) {
+      console.error("Failed to fetch auctions:", error);
+    }
   }, []);
+
+  const markAuctionEnded = useCallback(async (auctionId: string) => {
+    try {
+      const formData = new FormData();
+      formData.append("action", "markEnded");
+      const res = await fetch(`/api/auctions/${auctionId}`, {
+        method: "PUT",
+        body: formData,
+      });
+      const json = await res.json();
+      if (json.success) {
+        console.log("Auction marked as ended in response:", auctionId);
+        setAllAuctionItems((prev) =>
+          prev.map((item) =>
+            item.id === auctionId ? { ...item, ended: true } : item
+          )
+        );
+        fetchAuctions(); // Reload auctions after marking as ended
+      } else {
+        console.error("Failed to mark auction as ended:", json.error);
+      }
+    } catch (err) {
+      console.error("Error marking auction as ended:", err);
+    }
+  }, [fetchAuctions]);
+
+useEffect(() => {
+  fetchAuctions();
+
+  const updateStatuses = () => {
+    console.log("Running updateStatuses at:", DateTime.now().toString()); // Debug: Log execution time
+    const nowIST = DateTime.now().setZone("Asia/Kolkata");
+
+    allAuctionItems.forEach((auction) => {
+      const startUTC = auction.scheduledstart ? DateTime.fromISO(auction.scheduledstart, { zone: "utc" }) : null;
+      const startIST = startUTC ? startUTC.setZone("Asia/Kolkata") : null;
+
+      const duration = auction.auctionduration
+        ? ((d: any) =>
+            ((d.days || 0) * 86400) +
+            ((d.hours || 0) * 3600) +
+            ((d.minutes || 0) * 60))(auction.auctionduration)
+        : 0;
+
+      const endIST = startIST ? startIST.plus({ seconds: duration }) : null;
+
+      let status: "live" | "upcoming" | "closed" = "upcoming";
+      if (auction.ended === true) {
+        status = "closed";
+      } else if (startIST && endIST) {
+        if (nowIST < startIST) status = "upcoming";
+        else if (nowIST >= startIST && nowIST <= endIST) status = "live";
+        else if (nowIST > endIST) status = "closed";
+      }
+      console.log(`Auction ${auction.id} - Status: ${status}, Ended: ${auction.ended}, StartIST: ${startIST?.toString()}, EndIST: ${endIST?.toString()}, NowIST: ${nowIST.toString()}`); // Debug: Log auction details
+
+      const isAuctionEnded = status === "closed" && !auction.ended;
+      console.log(`Auction ${auction.id} - Is Ended Condition: ${isAuctionEnded}`); // Debug: Log condition result
+
+      if (isAuctionEnded) {
+        console.log(`Calling markAuctionEnded for auction ${auction.id}`); // Debug: Log before function call
+        markAuctionEnded(auction.id);
+      }
+    });
+  };
+
+  updateStatuses();
+  const interval = setInterval(updateStatuses, 60000); // Update every minute
+  return () => clearInterval(interval);
+}, [fetchAuctions, markAuctionEnded]);
 
   const calculateTimeLeft = (endTimeISO: string, startTimeISO: string): string => {
     const endIST = DateTime.fromISO(endTimeISO).setZone("Asia/Kolkata");
@@ -406,13 +461,13 @@ export default function AuctionsPage() {
         : auction.image || "/placeholder.svg";
     }, [auction.productimages, currentImageIndex, auction.image]);
 
-const auctionPath = auction.auctiontype === "reverse"
-  ? `/auctions/reverse/${auction.id}`
-  : auction.auctiontype === "forward" && auction.auctionsubtype === "dutch"
-  ? `/auctions/dutch/${auction.id}`
-  : auction.auctiontype === "forward" && auction.auctionsubtype === "yankee"
-  ? `/auctions/yankee/${auction.id}`
-  : `/auctions/${auction.id}`;
+    const auctionPath = auction.auctiontype === "reverse"
+      ? `/auctions/reverse/${auction.id}`
+      : auction.auctiontype === "forward" && auction.auctionsubtype === "dutch"
+      ? `/auctions/dutch/${auction.id}`
+      : auction.auctiontype === "forward" && auction.auctionsubtype === "yankee"
+      ? `/auctions/yankee/${auction.id}`
+      : `/auctions/${auction.id}`;
 
     return (
       <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 group relative border border-gray-200 bg-white dark:bg-gray-800">
