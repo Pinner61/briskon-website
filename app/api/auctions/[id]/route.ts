@@ -33,6 +33,8 @@ interface Auction {
   auctiontype?: "forward" | "reverse";
   questions?: { user: string; question: string; answer: string | null; question_time: string; answer_time: string | null }[];
   question_count?: number;
+  ended?: boolean; // Added to track if auction is ended
+  editable?: boolean; // Added to track if auction is editable
 }
 
 interface AuctionResponse extends Auction {
@@ -211,7 +213,7 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
 
       const nowIST = DateTime.now().setZone("Asia/Kolkata");
       const startIST = auctionData.scheduledstart
-        ? DateTime.fromISO(auctionData.scheduledstart).setZone("Asia/Kolkata")
+        ? DateTime.fromISO(auctionData.scheduledstart, { zone: "utc" }).setZone("Asia/Kolkata")
         : nowIST;
       const duration = auctionData.auctionduration
         ? ((d) => ((d.days || 0) * 86400) + ((d.hours || 0) * 3600) + ((d.minutes || 0) * 60))(
@@ -346,6 +348,7 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
         currentbidder: user_email,
         participants: updatedParticipants,
         bidcount: updatedBidCount,
+        editable: false,
       })
       .eq("id", id)
       .select();
@@ -514,6 +517,39 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
 
     return NextResponse.json({ success: true, data: { questions: updatedQuestions } }, { status: 200 });
   }
+  else if (action === "markEnded") {
+      // New action to mark auction as ended
+      const { data: auctionData, error: fetchError } = await supabase
+        .from("auctions")
+        .select("ended")
+        .eq("id", id)
+        .single();
+
+      if (fetchError || !auctionData) {
+        return NextResponse.json(
+          { success: false, error: fetchError?.message || "Auction not found" },
+          { status: 404 }
+        );
+      }
+
+      if (auctionData.ended) {
+        return NextResponse.json(
+          { success: false, error: "Auction is already marked as ended" },
+          { status: 400 }
+        );
+      }
+
+      const { error: updateError } = await supabase
+        .from("auctions")
+        .update({ ended: true, editable: false }) // Mark as ended and not editable
+        .eq("id", id);
+
+      if (updateError) {
+        return NextResponse.json({ success: false, error: updateError.message }, { status: 500 });
+      }
+
+      return NextResponse.json({ success: true, data: { ended: true } }, { status: 200 });
+    }
 
   return NextResponse.json({ success: false, error: "Invalid action specified" }, { status: 400 });
   } catch (error) {
