@@ -1,24 +1,45 @@
-// dashboard/buyer/page.tsx
 "use client";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { ShoppingBag, Gavel, TrendingUp, Heart, History, Settings, Bell } from "lucide-react";
+import { ShoppingBag, Gavel, TrendingUp, History, Settings, Bell } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth"; // Adjust path based on your project structure
 
 export default function BuyerDashboard() {
   const { user, isLoading } = useAuth();
+  const [stats, setStats] = useState({ activeBids: 0, wonAuctions: 0, recentActivities: [] });
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
 
-  // No need for local useState or sessionStorage since useAuth handles the user state
-  // useEffect can be removed unless you need side effects based on user
+  useEffect(() => {
+    const fetchStats = async () => {
+      setIsLoadingStats(true);
+      try {
+        const response = await fetch(
+          `/api/buyer/stats?email=${encodeURIComponent(user?.email || "")}&id=${encodeURIComponent(user?.id || "")}`
+        );
+        if (!response.ok) throw new Error("Failed to fetch stats");
+        const data = await response.json();
+        setStats(data);
+      } catch (error) {
+        console.error("Error fetching stats:", error);
+        setStats({ activeBids: 0, wonAuctions: 0, recentActivities: [] }); // Fallback values
+      } finally {
+        setIsLoadingStats(false);
+      }
+    };
 
-  if (isLoading) {
+    if (user) {
+      fetchStats();
+    }
+  }, [user]);
+
+  if (isLoading || isLoadingStats) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p>Loading user data...</p>
+        <p>Loading user and dashboard data...</p>
       </div>
     );
   }
@@ -66,14 +87,14 @@ export default function BuyerDashboard() {
           </div>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <Card className="hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Active Bids</CardTitle>
               <Gavel className="h-5 w-5 text-blue-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">5</div>
+              <div className="text-2xl font-bold">{stats.activeBids}</div>
               <p className="text-xs text-muted-foreground">+2 from last week</p>
             </CardContent>
           </Card>
@@ -83,18 +104,8 @@ export default function BuyerDashboard() {
               <TrendingUp className="h-5 w-5 text-green-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">12</div>
+              <div className="text-2xl font-bold">{stats.wonAuctions}</div>
               <p className="text-xs text-muted-foreground">Total lifetime</p>
-            </CardContent>
-          </Card>
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Watchlist Items</CardTitle>
-              <Heart className="h-5 w-5 text-red-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">28</div>
-              <p className="text-xs text-muted-foreground">3 new this week</p>
             </CardContent>
           </Card>
         </div>
@@ -122,11 +133,6 @@ export default function BuyerDashboard() {
                 </Link>
               </Button>
               <Button variant="outline" className="h-24 flex flex-col items-center justify-center" asChild>
-                <Link href="/dashboard/buyer/watchlist">
-                  <Heart className="h-6 w-6 mb-1" /> My Watchlist
-                </Link>
-              </Button>
-              <Button variant="outline" className="h-24 flex flex-col items-center justify-center" asChild>
                 <Link href="/dashboard/buyer/bid-history">
                   <History className="h-6 w-6 mb-1" /> Bid History
                 </Link>
@@ -144,9 +150,15 @@ export default function BuyerDashboard() {
             </CardHeader>
             <CardContent>
               <ul className="space-y-3">
-                <li className="text-sm">You placed a bid on "Vintage Rolex".</li>
-                <li className="text-sm">Auction "Antique Vase" ended, you won!</li>
-                <li className="text-sm">You added "Art Deco Lamp" to watchlist.</li>
+                {stats.recentActivities.length > 0 ? (
+                  stats.recentActivities.map((activity, index) => (
+                    <li key={index} className="text-sm">
+                      {activity}
+                    </li>
+                  ))
+                ) : (
+                  <li className="text-sm text-gray-500">No recent activity.</li>
+                )}
               </ul>
             </CardContent>
           </Card>
