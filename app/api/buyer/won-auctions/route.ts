@@ -19,6 +19,7 @@ interface Auction {
   participants: string[] | { id: string }[];
   currentbidder: string;
   ended: boolean;
+  targetprice?: number; // Optional field for reverse auctions
 }
 
 interface WonAuction {
@@ -27,6 +28,7 @@ interface WonAuction {
   auctionType: string;
   startAmount: number;
   winningBidAmount: number;
+  targetprice?: number; // Optional field for target price
 }
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -49,7 +51,7 @@ export async function GET(request: Request) {
     // Fetch auctions where the user is the current bidder and ended is true
     const { data: wonAuctions, error: auctionsError } = await supabase
       .from("auctions")
-      .select("id, productname, auctiontype, auctionsubtype, startprice, currentbid, productquantity, participants, ended")
+      .select("id, productname, auctiontype, auctionsubtype, startprice, currentbid, productquantity, participants, ended,targetprice")
       .eq("currentbidder", userEmail)
       .eq("ended", true);
 
@@ -89,6 +91,7 @@ export async function GET(request: Request) {
             auctionType: auction.auctiontype || "standard",
             startAmount: auction.startprice || 0,
             winningBidAmount: auction.currentbid || 0,
+            targetprice: auction.targetprice, // Include target price if available
           });
         }
       }
