@@ -14,6 +14,7 @@ interface WonAuctionEntry {
   auctionType: string | null;
   startAmount: number;
   winningBidAmount: number;
+  targetprice?: number; // Optional field for target price
 }
 
 export default function WonAuctions() {
@@ -101,7 +102,13 @@ export default function WonAuctions() {
                             </Link>
                           </td>
                           <td className="p-2">{auction.auctionType || "standard"}</td>
-                          <td className="p-2">{auction.startAmount.toFixed(2)}</td>
+                          <td className="p-2">
+  {(auction.auctionType === "reverse"
+    ? auction.targetprice
+    : auction.startAmount
+  )?.toFixed(2)}
+</td>
+
                           <td className="p-2">{auction.winningBidAmount.toFixed(2)}</td>
                         </tr>
                       );
