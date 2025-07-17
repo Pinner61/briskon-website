@@ -62,6 +62,7 @@ interface Auction {
   bidders?: number;
   watchers?: number;
   productimages?: string[];
+  productvideos?: string[]; // Added for video support
   productdocuments?: string[];
   productdescription?: string;
   specifications?: string;
@@ -359,7 +360,6 @@ function renderKeyValueBlock(
     );
   }
 }
-
 
 export default function ReverseAuctionDetailPage() {
   const params = useParams<{ id: string }>();
@@ -674,15 +674,13 @@ export default function ReverseAuctionDetailPage() {
   };
 
   const handlePrevImage = () => {
-    setCurrentImageIndex((prev) =>
-      prev === 0 ? (auction?.productimages?.length || 1) - 1 : prev - 1
-    );
+    const totalMedia = (auction?.productimages?.length || 0) + (auction?.productvideos?.length || 0);
+    setCurrentImageIndex((prev) => (prev === 0 ? totalMedia - 1 : prev - 1));
   };
 
   const handleNextImage = () => {
-    setCurrentImageIndex((prev) =>
-      prev === (auction?.productimages?.length || 1) - 1 ? 0 : prev + 1
-    );
+    const totalMedia = (auction?.productimages?.length || 0) + (auction?.productvideos?.length || 0);
+    setCurrentImageIndex((prev) => (prev === totalMedia - 1 ? 0 : prev + 1));
   };
 
   const handleSubmitQuestion = async () => {
@@ -862,16 +860,26 @@ export default function ReverseAuctionDetailPage() {
           <div className="lg:col-span-2 space-y-6">
             <Card className="hover-lift transition-smooth">
               <CardContent className="p-0 relative">
-                <Image
-                  src={auction.productimages?.[currentImageIndex] || "/placeholder.svg"}
-                  alt={auction.productname || auction.title || "Auction Item"}
-                  width={600}
-                  height={400}
-                  className="w-full h-96 object-cover rounded-t-lg transition-smooth hover:scale-105"
-                  priority
-                />
+                {currentImageIndex < (auction?.productimages?.length || 0) ? (
+                  <Image
+                    src={auction.productimages?.[currentImageIndex] || "/placeholder.svg"}
+                    alt={auction.productname || auction.title || "Auction Item"}
+                    width={600}
+                    height={400}
+                    className="w-full h-96 object-cover rounded-t-lg transition-smooth hover:scale-105"
+                    priority
+                  />
+                ) : (
+                  <video
+                    src={auction.productvideos?.[currentImageIndex - (auction?.productimages?.length || 0)]}
+                    controls
+                    className="w-full h-96 object-cover rounded-t-lg transition-smooth"
+                    autoPlay
+                    muted
+                  />
+                )}
                 <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
-                  {`${currentImageIndex + 1}/${auction.productimages?.length || 1}`}
+                  {`${currentImageIndex + 1}/${(auction?.productimages?.length || 0) + (auction?.productvideos?.length || 0)}`}
                 </div>
                 <button
                   onClick={handlePrevImage}
@@ -897,6 +905,19 @@ export default function ReverseAuctionDetailPage() {
                         className="w-20 h-16 object-cover rounded cursor-pointer border-2 border-transparent hover:border-blue-500 transition-smooth hover-lift"
                         onClick={() => setCurrentImageIndex(index)}
                       />
+                    ))}
+                    {auction.productvideos?.map((videoUrl, index) => (
+                      <div
+                        key={index + (auction?.productimages?.length || 0)}
+                        className="w-20 h-16 rounded cursor-pointer border-2 border-transparent hover:border-blue-500 transition-smooth hover-lift"
+                        onClick={() => setCurrentImageIndex(index + (auction?.productimages?.length || 0))}
+                      >
+                        <video
+                          src={videoUrl}
+                          className="w-full h-full object-cover rounded"
+                          muted
+                        />
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -1213,10 +1234,10 @@ export default function ReverseAuctionDetailPage() {
                     <Input
                       type="number"
                       placeholder={
-    auction?.auctionsubtype === "sealed"
-      ? `Start Price: $${auction.startprice?.toLocaleString() ?? "0"}`
-      : `Maximum: $${targetPrice.toLocaleString()}`
-  }
+                        auction?.auctionsubtype === "sealed"
+                          ? `Start Price: $${auction.startprice?.toLocaleString() ?? "0"}`
+                          : `Maximum: $${targetPrice.toLocaleString()}`
+                      }
                       value={bidAmount}
                       onChange={(e) => setBidAmount(e.target.value)}
                       className="mt-1 transition-smooth"
