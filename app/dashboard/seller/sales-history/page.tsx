@@ -2,99 +2,50 @@
 
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { DateTime } from "luxon";
-import Chart from "chart.js/auto";
 
-interface AnalyticsData {
-  totalSales: number;
-  averagePrice: number;
-  salesByDate: { date: string; total: number }[];
+interface Sale {
+  id: string;
+  productname: string;
+  salePrice: number;
+  buyer: string;
+  saleDate: string | null;
 }
 
-export default function PerformanceAnalytics() {
+export default function SalesHistory() {
   const { user, isLoading } = useAuth();
-  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
-  const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(true);
+  const [sales, setSales] = useState<Sale[]>([]);
+  const [isLoadingSales, setIsLoadingSales] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const chartRef = useRef<HTMLCanvasElement | null>(null);
-  const chartInstance = useRef<Chart | null>(null);
 
   useEffect(() => {
-    const fetchAnalytics = async () => {
-      setIsLoadingAnalytics(true);
+    const fetchSales = async () => {
+      setIsLoadingSales(true);
       try {
+        console.log("User object:", user); // Debug user object
         if (!user?.email) throw new Error("User email is missing");
-        const response = await fetch(`/api/seller/performance-analytics?email=${encodeURIComponent(user.email)}`);
-        if (!response.ok) throw new Error(`Failed to fetch analytics: ${response.statusText}`);
+        const response = await fetch(`/api/seller/sales-history?email=${encodeURIComponent(user.email)}`);
+        console.log("Fetch response status:", response.status); // Debug status
+        if (!response.ok) throw new Error(`Failed to fetch sales history: ${response.statusText}`);
         const data = await response.json();
-        console.log("Fetch response data:", data); // Debug API response
-        if (!data.success) throw new Error(data.error || "Failed to load analytics");
-        setAnalytics(data.data);
+        console.log("Fetch response data:", data); // Debug full response
+        if (!data.success) throw new Error(data.error || "Failed to load sales history");
+        setSales(data.data || []);
       } catch (err) {
         setError(err instanceof Error ? err.message : "An error occurred");
-        console.error("Fetch error:", err);
+        console.error("Fetch error:", err); // Debug error
       } finally {
-        setIsLoadingAnalytics(false);
+        setIsLoadingSales(false);
       }
     };
 
-    if (user) fetchAnalytics();
+    if (user) fetchSales();
   }, [user]);
 
-  useEffect(() => {
-    if (chartRef.current && analytics?.salesByDate.length) {
-      console.log("Chart setup - Ref:", chartRef.current); // Debug ref
-      console.log("Chart data:", analytics.salesByDate); // Debug data
-      const ctx = chartRef.current.getContext("2d");
-      if (ctx) {
-        if (chartInstance.current) {
-          chartInstance.current.destroy(); // Destroy existing instance
-        }
-        chartInstance.current = new Chart(ctx, {
-          type: "line",
-          data: {
-            labels: analytics.salesByDate.map((item) => item.date),
-            datasets: [
-              {
-                label: "Sales ($)",
-                data: analytics.salesByDate.map((item) => item.total),
-                borderColor: "rgba(75, 192, 192, 1)",
-                backgroundColor: "rgba(75, 192, 192, 0.2)",
-                fill: true,
-                tension: 0.1,
-              },
-            ],
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-              y: {
-                beginAtZero: true,
-                title: { display: true, text: "Sales ($)" },
-              },
-              x: {
-                title: { display: true, text: "Date" },
-              },
-            },
-            plugins: {
-              legend: { position: "top" },
-            },
-          },
-        });
-      } else {
-        console.error("Failed to get 2d context");
-      }
-    }
-    return () => {
-      if (chartInstance.current) {
-        chartInstance.current.destroy(); // Cleanup on unmount
-      }
-    };
-  }, [analytics]);
-
-  if (isLoading || isLoadingAnalytics) {
+  if (isLoading || isLoadingSales) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
@@ -115,26 +66,44 @@ export default function PerformanceAnalytics() {
       <div className="container mx-auto px-4">
         <Card>
           <CardHeader>
-            <CardTitle>Performance Analytics</CardTitle>
+            <CardTitle>Sales History</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              <div className="p-4 bg-blue-100 rounded-lg">
-                <h3 className="text-lg font-semibold">Total Sales</h3>
-                <p className="text-2xl font-bold">${analytics?.totalSales.toLocaleString() || 0}</p>
-              </div>
-              <div className="p-4 bg-green-100 rounded-lg">
-                <h3 className="text-lg font-semibold">Average Price</h3>
-                <p className="text-2xl font-bold">${analytics?.averagePrice.toLocaleString() || 0}</p>
-              </div>
-            </div>
-            {analytics?.salesByDate.length ? (
-              <div className="mt-6" style={{ position: "relative", height: "400px" }}>
-                <h3 className="text-lg font-semibold mb-2">Sales Over Time</h3>
-                <canvas ref={chartRef} className="w-full" style={{ height: "100%" }}></canvas>
+            {sales.length ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-100 dark:bg-gray-800">
+                      <th className="p-2 text-left">Auction ID</th>
+                      <th className="p-2 text-left">Product Name</th>
+                      <th className="p-2 text-right">Sale Price</th>
+                      <th className="p-2 text-left">Buyer</th>
+                      <th className="p-2 text-left">Sale Date</th>
+                      <th className="p-2 text-right">Details</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sales.map((sale) => (
+                      <tr key={sale.id} className="border-t">
+                        <td className="p-2">{sale.id}</td>
+                        <td className="p-2">{sale.productname}</td>
+                        <td className="p-2 text-right">${sale.salePrice.toLocaleString()}</td>
+                        <td className="p-2">{sale.buyer}</td>
+                        <td className="p-2">
+                          {sale.saleDate ? DateTime.fromISO(sale.saleDate).toLocaleString(DateTime.DATETIME_MED) : "N/A"}
+                        </td>
+                        <td className="p-2 text-right">
+                          <Button asChild size="sm">
+                            <Link href={`/dashboard/seller/my-listings/${sale.id}`}>View</Link>
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             ) : (
-              <p className="text-center text-gray-500">No sales data available.</p>
+              <p>No sales history available.</p>
             )}
           </CardContent>
         </Card>
