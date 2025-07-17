@@ -89,6 +89,7 @@ interface Auction {
   bidders?: number;
   watchers?: number;
   productimages?: string[];
+  productvideos?: string[]; // Added for video support
   productdocuments?: string[];
   productdescription?: string;
   specifications?: string;
@@ -107,6 +108,7 @@ interface Auction {
   model?: string;
   reserveprice?: number;
   ended?: boolean;
+  editable?: boolean;
 }
 
 interface Bid {
@@ -260,6 +262,31 @@ export default function DutchAuctionDetailPage() {
         if (newPrice <= (increment > 0 ? increment : 1) && !auction.ended) {
           setIsFloor(true);
         }
+
+        // Check if auction has ended (price at floor or time exceeded)
+        const isAuctionEnded = newPrice <= (increment > 0 ? increment : 1) || nowIST > end;
+        if (isAuctionEnded && !auction.ended) {
+          const markAuctionEnded = async () => {
+            try {
+              const formData = new FormData();
+              formData.append("action", "markEnded");
+              const res = await fetch(`/api/auctions/dutch/${auction.id}`, {
+                method: "PUT",
+                body: formData,
+              });
+              const json = await res.json();
+              if (json.success) {
+                console.log("Auction marked as ended in response:", auction.id);
+                setAuction((prev) => prev ? { ...prev, ended: true } : prev); // Update local state
+              } else {
+                console.error("Failed to mark auction as ended:", json.error);
+              }
+            } catch (err) {
+              console.error("Error marking auction as ended:", err);
+            }
+          };
+          markAuctionEnded();
+        }
       }, 60 * 1000);
 
       setPriceUpdateInterval(interval);
@@ -407,15 +434,13 @@ export default function DutchAuctionDetailPage() {
   };
 
   const handlePrevImage = () => {
-    setCurrentImageIndex((prev) =>
-      prev === 0 ? (auction?.productimages?.length || 1) - 1 : prev - 1
-    );
+    const totalMedia = (auction?.productimages?.length || 0) + (auction?.productvideos?.length || 0);
+    setCurrentImageIndex((prev) => (prev === 0 ? totalMedia - 1 : prev - 1));
   };
 
   const handleNextImage = () => {
-    setCurrentImageIndex((prev) =>
-      prev === (auction?.productimages?.length || 1) - 1 ? 0 : prev + 1
-    );
+    const totalMedia = (auction?.productimages?.length || 0) + (auction?.productvideos?.length || 0);
+    setCurrentImageIndex((prev) => (prev === totalMedia - 1 ? 0 : prev + 1));
   };
 
   const handleSubmitQuestion = async () => {
@@ -526,6 +551,10 @@ export default function DutchAuctionDetailPage() {
     isAuctionNotStarted ||
     isAuctionEndedByTime;
 
+  // Total media count for navigation
+  const totalMedia = (auction?.productimages?.length || 0) + (auction?.productvideos?.length || 0);
+  const currentMediaIndex = currentImageIndex % totalMedia;
+
   return (
     <div className="min-h-screen py-20">
       <div className="container mx-auto px-4">
@@ -533,15 +562,25 @@ export default function DutchAuctionDetailPage() {
           <div className="lg:col-span-2 space-y-6">
             <Card className="hover-lift transition-smooth">
               <CardContent className="p-0 relative">
-                <Image
-                  src={auction.productimages?.[currentImageIndex] || "/placeholder.svg"}
-                  alt={auction.productname || auction.title || "Auction Item"}
-                  width={600}
-                  height={400}
-                  className="w-full h-96 object-cover rounded-t-lg transition-smooth hover:scale-105"
-                />
+                {currentMediaIndex < (auction?.productimages?.length || 0) ? (
+                  <Image
+                    src={auction.productimages?.[currentMediaIndex] || "/placeholder.svg"}
+                    alt={auction.productname || auction.title || "Auction Item"}
+                    width={600}
+                    height={400}
+                    className="w-full h-96 object-cover rounded-t-lg transition-smooth hover:scale-105"
+                  />
+                ) : (
+                  <video
+                    src={auction.productvideos?.[currentMediaIndex - (auction?.productimages?.length || 0)]}
+                    controls
+                    className="w-full h-96 object-cover rounded-t-lg transition-smooth"
+                    autoPlay
+                    muted
+                  />
+                )}
                 <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
-                  {`${currentImageIndex + 1}/${auction.productimages?.length || 1}`}
+                  {`${currentMediaIndex + 1}/${totalMedia}`}
                 </div>
                 <button
                   onClick={handlePrevImage}
@@ -567,6 +606,19 @@ export default function DutchAuctionDetailPage() {
                         className="w-20 h-16 object-cover rounded cursor-pointer border-2 border-transparent hover:border-blue-500 transition-smooth hover-lift"
                         onClick={() => setCurrentImageIndex(index)}
                       />
+                    ))}
+                    {auction.productvideos?.map((video: string, index: number) => (
+                      <div
+                        key={index + (auction?.productimages?.length || 0)}
+                        className="w-20 h-16 rounded cursor-pointer border-2 border-transparent hover:border-blue-500 transition-smooth hover-lift"
+                        onClick={() => setCurrentImageIndex(index + (auction?.productimages?.length || 0))}
+                      >
+                        <video
+                          src={video}
+                          className="w-full h-full object-cover rounded"
+                          muted
+                        />
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -697,7 +749,7 @@ export default function DutchAuctionDetailPage() {
                             <div className="mb-2">
                               <span className="font-medium">{qa.user}</span>
                               <span className="text-sm text-gray-600 dark:text-gray-300 ml-2">
-                                {new Date(qa.question_time).toLocaleString("en-US", { hour12: true, hour: "2-digit", minute: "2-digit" })}
+                                {new Date(qa.time).toLocaleString("en-US", { hour12: true, hour: "2-digit", minute: "2-digit" })}
                               </span>
                             </div>
                             <div className="mb-2">
