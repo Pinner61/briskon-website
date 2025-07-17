@@ -15,6 +15,7 @@ interface Auction {
   bidincrementtype?: "fixed" | "percentage";
   minimumincrement?: number;
   startprice?: number;
+  targetprice?: number; // Optional field for reverse auctions
   scheduledstart?: string | null;
   auctionduration?: { days?: number; hours?: number; minutes?: number };
   bidders?: number;
