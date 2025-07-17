@@ -115,6 +115,8 @@ interface Auction {
   model?: string;
   reserveprice?: number;
   auctionsubtype?: string; // New field for auction subtype (e.g., "sealed", "silent")
+  ended?: boolean; // New field to indicate if the auction has ended
+  editable?: boolean; // New field to indicate if the auction is editable by the creator
 }
 
 // Bid interface
@@ -142,8 +144,9 @@ export default function AuctionDetailPage() {
   const [timeLeft, setTimeLeft] = useState<string>("Loading...");
 
   const { isAuthenticated, user } = useAuth();
+ 
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
-
+  
   useEffect(() => {
     const fetchAuctionDetails = async () => {
       try {
@@ -153,7 +156,7 @@ export default function AuctionDetailPage() {
         console.log("Auction API Response (Raw):", json);
         if (!json.success) throw new Error(json.error || "Failed to fetch auction");
         const participants = Array.isArray(json.data.participants) ? json.data.participants : [];
-        const updatedAuction: Auction = { ...json.data, id: auctionId, participants }; // Ensure id is set
+        const updatedAuction: Auction = { ...json.data, id: auctionId, participants, ended: json.data.ended || false }; // Include ended from API
         console.log("Processed Auction Data:", updatedAuction);
         setAuction(updatedAuction);
 
@@ -200,7 +203,7 @@ export default function AuctionDetailPage() {
   // Dynamic time left and status update
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    const updateTimeLeft = () => {
+    const updateTimeLeft = async () => {
       if (auction?.scheduledstart && auction.auctionduration) {
         const nowIST = DateTime.now().setZone("Asia/Kolkata");
         const startIST = DateTime.fromISO(auction.scheduledstart, { zone: "utc" }).setZone("Asia/Kolkata");
@@ -212,8 +215,7 @@ export default function AuctionDetailPage() {
           startIST: startIST.toISO(),
           endIST: endIST.toISO(),
           duration,
-        }
-        )
+        });
         let isAuctionNotStarted = nowIST < startIST;
         let isAuctionEnded = false;
         let calculatedTimeLeft = "";
@@ -228,13 +230,37 @@ export default function AuctionDetailPage() {
         }
 
         setTimeLeft(calculatedTimeLeft || "Auction ended");
+
+        // Call markEnded action if auction just ended and not already marked
+        if (isAuctionEnded && !auction.ended) {
+          const markAuctionEnded = async () => {
+            try {
+              const formData = new FormData();
+              formData.append("action", "markEnded");
+              const res = await fetch(`/api/auctions/${auctionId}`, {
+                method: "PUT",
+                body: formData,
+              });
+              const json = await res.json();
+              if (json.success) {
+                console.log("Auction marked as ended in response:", auctionId);
+                setAuction((prev) => prev ? { ...prev, ended: true } : prev); // Update local state
+              } else {
+                console.error("Failed to mark auction as ended:", json.error);
+              }
+            } catch (err) {
+              console.error("Error marking auction as ended:", err);
+            }
+          };
+          markAuctionEnded();
+        }
       }
     };
 
     updateTimeLeft();
     interval = setInterval(updateTimeLeft, 1000);
     return () => clearInterval(interval);
-  }, [auction?.scheduledstart, auction?.auctionduration]);
+  }, [auction?.scheduledstart, auction?.auctionduration, auction?.ended, auctionId]);
 
   const handlePlaceBid = async () => {
     if (!isAuthenticated) {
@@ -401,7 +427,6 @@ export default function AuctionDetailPage() {
       return;
     }
 
-
     try {
       const formData = new FormData();
       formData.append("action", "postQuestion");
@@ -531,6 +556,9 @@ export default function AuctionDetailPage() {
 
   const isSilentAuction = auction?.issilentauction || auction?.auctionsubtype === "silent";
 
+  const currentMedia = auction?.productimages?.[currentImageIndex] || "/placeholder.svg";
+  const isVideo = currentMedia.toLowerCase().endsWith(".mp4") || currentMedia.toLowerCase().endsWith(".webm") || currentMedia.toLowerCase().endsWith(".mov");
+
   return (
     <div className="min-h-screen py-20">
       <div className="container mx-auto px-4">
@@ -538,13 +566,24 @@ export default function AuctionDetailPage() {
           <div className="lg:col-span-2 space-y-6">
             <Card className="hover-lift transition-smooth">
               <CardContent className="p-0 relative">
-                <Image
-                  src={auction.productimages?.[currentImageIndex] || "/placeholder.svg"}
-                  alt={auction.productname || auction.title || "Auction Item"}
-                  width={600}
-                  height={400}
-                  className="w-full h-96 object-cover rounded-t-lg transition-smooth hover:scale-105"
-                />
+                {isVideo ? (
+                  <video
+                    src={currentMedia}
+                    controls
+                    className="w-full h-96 object-cover rounded-t-lg transition-smooth hover:scale-105"
+                    preload="metadata"
+                  >
+                    Your browser does not support the video tag.
+                  </video>
+                ) : (
+                  <Image
+                    src={currentMedia}
+                    alt={auction.productname || auction.title || "Auction Item"}
+                    width={600}
+                    height={400}
+                    className="w-full h-96 object-cover rounded-t-lg transition-smooth hover:scale-105"
+                  />
+                )}
                 <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
                   {`${currentImageIndex + 1}/${auction.productimages?.length ?? 1}`}
                 </div>
@@ -562,17 +601,31 @@ export default function AuctionDetailPage() {
                 </button>
                 <div className="p-4">
                   <div className="flex gap-2">
-                    {auction.productimages?.map((image: string, index: number) => (
-                      <Image
-                        key={index}
-                        src={image || "/placeholder.svg"}
-                        alt={`${auction.productname || auction.title} ${index + 1}`}
-                        width={100}
-                        height={80}
-                        className="w-20 h-16 object-cover rounded cursor-pointer border-2 border-transparent hover:border-blue-500 transition-smooth hover-lift"
-                        onClick={() => setCurrentImageIndex(index)}
-                      />
-                    ))}
+                    {auction.productimages?.map((media: string, index: number) => {
+                      const isVideoThumbnail = media.toLowerCase().endsWith(".mp4") || media.toLowerCase().endsWith(".webm") || media.toLowerCase().endsWith(".mov");
+                      return (
+                        <div key={index} className="relative">
+                          {isVideoThumbnail ? (
+                            <video
+                              src={media}
+                              className="w-20 h-16 object-cover rounded cursor-pointer border-2 border-transparent hover:border-blue-500 transition-smooth hover-lift"
+                              onClick={() => setCurrentImageIndex(index)}
+                              muted
+                              playsInline
+                            />
+                          ) : (
+                            <Image
+                              src={media || "/placeholder.svg"}
+                              alt={`${auction.productname || auction.title} ${index + 1}`}
+                              width={100}
+                              height={80}
+                              className="w-20 h-16 object-cover rounded cursor-pointer border-2 border-transparent hover:border-blue-500 transition-smooth hover-lift"
+                              onClick={() => setCurrentImageIndex(index)}
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </CardContent>
